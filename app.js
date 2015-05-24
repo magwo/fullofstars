@@ -1,37 +1,16 @@
 window.fullofstars = window.fullofstars || {};
 
 
-var MAX_MASS = 100000000000000;
-
-fullofstars.createGravitySystem = function(particleCount) {
-    var bodies = [];
-
-    for (var p = 0; p < particleCount; p++) {
-        var pX = Math.random() * 500 - 250;
-        var pY = Math.random() * 500 - 250;
-        var pZ = Math.random() * 100 - 50;
-        var pos = new THREE.Vector3(pX, pY, pZ);
-
-        var mass = MAX_MASS * Math.random() * Math.random();
-        var xVel = 60*Math.tan(Math.PI*pos.x/250);
-        var yVel = -60*Math.tan(Math.PI*pos.y/250);
-        var body = new PointMassBody(mass, pos, new THREE.Vector3(xVel, yVel, 0));
-        bodies.push(body);
-    }
-    return bodies;
-};
-
-fullofstars.updateViewport = function(window, renderer, camera) {
-    var w = window.innerWidth;
-    var h = window.innerHeight;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-};
-
-
 (function() {
 
+
+    fullofstars.updateViewport = function(window, renderer, camera) {
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+    };
     
 
 
@@ -46,8 +25,9 @@ fullofstars.updateViewport = function(window, renderer, camera) {
             particle = bodies[p].position;
             // add it to the geometry
             particles.vertices.push(particle);
-            var massFactor = bodies[p].mass / MAX_MASS;
+            var massFactor = bodies[p].mass / fullofstars.MAX_MASS;
             var color = new THREE.Color(1, 0.3 + 0.6 * massFactor, 0.3 + 0.6 * massFactor);
+            if(bodies[p].mass > 0.9999*fullofstars.MAX_MASS) { color = new THREE.Color(0,0,0); }
             var hsl = color.getHSL();
             color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
             colors[p] = color;
@@ -87,8 +67,15 @@ fullofstars.updateViewport = function(window, renderer, camera) {
         var meshDust = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.6), materials.dust );
         var meshDebris = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.3), materials.debrisLarge )
         scene.add( mesh );
-        scene.add( meshDust );
-        scene.add( meshDebris );
+        //scene.add( meshDust );
+        //scene.add( meshDebris );
+
+
+        var timeScale = 1.0;
+        $("body").on("keypress", function(e) {
+            console.log(e.which);
+            if(e.which == 32) { timeScale = 1.0 - timeScale; }
+        });
 
         function render() {
             renderer.render( scene, camera );
@@ -96,12 +83,28 @@ fullofstars.updateViewport = function(window, renderer, camera) {
 
         var lastT = 0.0;
         function update(t) {
-            var dt = (t - lastT) * 0.001;
-
-            applyBruteForceNewtonianGravity(bodies, dt);
-            for(var i=0, len=bodies.length; i<len; i++) {
-                bodies[i].updateAndResetForce(dt);
-                mesh.geometry.vertices[i].copy(bodies[i].position);
+            var dt = (t - lastT) * 0.001 * timeScale;
+            var useVerletUpdate = true;
+            if(useVerletUpdate) {
+                // This step updates positions
+                for(var i=0, len=bodies.length; i<len; i++) {
+                    bodies[i].velocityVerletUpdate(dt, true);
+                    mesh.geometry.vertices[i].copy(bodies[i].position);
+                }
+                // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
+                fullofstars.applyBruteForceNewtonianGravity(bodies, dt); // One of these should be removable...
+                for(var i=0, len=bodies.length; i<len; i++) {
+                    var body = bodies[i];
+                    body.velocityVerletUpdate(dt, false);
+                    body.force.copy(body.prevForce);
+                }
+            }
+            else {
+                fullofstars.applyBruteForceNewtonianGravity(bodies, dt);
+                for(var i=0, len=bodies.length; i<len; i++) {
+                    bodies[i].updateAndResetForce(dt);
+                    mesh.geometry.vertices[i].copy(bodies[i].position);
+                }
             }
             mesh.geometry.verticesNeedUpdate = true;
             meshDust.geometry.verticesNeedUpdate = true;
