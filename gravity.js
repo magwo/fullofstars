@@ -52,7 +52,7 @@ PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
 };
 
 
-fullofstars.applyBruteForceNewtonianGravity = function(celestials, dt) {
+fullofstars.applyBruteForceNewtonianGravity = function(celestials) {
     // Apply gravitational forces to all bodies, from all celestial bodies
     var tempVec = new THREE.Vector3();
     for(var i=0, celestLen=celestials.length; i<celestLen; i++) {
@@ -78,6 +78,109 @@ fullofstars.applyBruteForceNewtonianGravity = function(celestials, dt) {
     }
 }
 
+
+// Smart gravity application system... hmm
+// Interaction combination table
+//
+// 1. Find close interactions
+// 2. Handle close interactions
+// 3. Add close interactions to interaction table, with sorted ids [50: [51, 60, 112], ]
+// 2. Iterate K times for non-close interactions, where K is related to update interval on non-close interactions
+
+fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
+    var applicator = {};
+
+    var closeInteractions = [];
+    var closeInteractionCount = 0;
+
+    var farForces = _.map(celestials, function() { return new THREE.Vector3(0, 0, 0); });
+
+    var currentLongI = 0;
+
+    var FAR_THRESHOLD_SQR = Math.pow(20, 2); // TODO: Make this more related to mass and distance combined
+
+    // TODO: Inline this when mature solution
+    // Returns: Whether this should be a close or far interaction
+    var applyGravity = function(body1, body2) {
+        var body1To2 = tempVec.subVectors(body2.position, body1.position);
+        var sqrDist = body1To2.lengthSq();
+        var force = GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / sqrDist);
+        // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
+        var forceOnBody = bodyToOther.setLength(force);
+        body1.force.add(forceOnBody);
+        body2.force.sub(forceOnBody);
+
+        return sqrDist < FAR_THRESHOLD_SQR;
+    };
+
+    var addGravityToVector = function(body1, body2, vector) {
+        var body1To2 = tempVec.subVectors(body2.position, body1.position);
+        var sqrDist = body1To2.lengthSq();
+        var force = GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / sqrDist);
+        // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
+        var forceOnBody = bodyToOther.setLength(force);
+        if(sqrDist < FAR_THRESHOLD_SQR) {
+            return true; // This should be handled as a close interaction
+        }
+        vector.add(forceOnBody);
+        return false;
+    };
+
+    applicator.handleCloseInteractions = function() {
+        for(var i=0, outerLen=closeInteractions.length; i<outerLen; i++) {
+            for(var innerKey in closeInteractions[i]) {
+                var isClose = applyGravity(celestials[i], celestials[closeInteractions[i][j]], dt);
+                if(!isClose) {
+                    // Remove this interaction
+                    delete closeInteractions[i][innerKey];
+                    closeInteractionCount--;
+                }
+            }
+        }
+    };
+
+    applicator.handleFarInteractions = function(bodyCount) {
+        var celestCount = celestials.length;
+        for(var n=0; n<bodyCount; n++) {
+            currentLongI++;
+            if(currentLongI >= celestCount) {
+                currentLongI = 0;
+            }
+
+            // Make a sum of all the other bodies attraction forces and save them
+            var farForce = farForces[currentLongI];
+            farFoce.set(0,0,0);
+            var body1 = celestials[currentLongI];
+            for(var j=0; j<celestCount; j++) {
+                if(j != currentLongI) {
+                    if(!addGravityToVector(body1, celestials[j], farForce)) {
+                        // Should handle this as a close interaction
+                        closeInteractions[currentLongI][j] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    applicator.applyFarForces = function() {
+        for(var i=0, len=celestials.length; i<len; i++) {
+            celestials[i].force.add(farForces[i]);
+        }
+    }
+                
+
+    var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
+
+    applicator.apply = function() {
+        applicator.handleFarInteractions(1); // TODO: Consider the count, should relate to number of bodies and desired precision
+        applicator.applyFarForces();
+        applicator.handleCloseInteractions();
+    };
+
+    return applicator;
+}
+
+
 fullofstars.MAX_MASS = 100000000000000;
 
 fullofstars.createGravitySystem = function(particleCount) {
@@ -86,7 +189,7 @@ fullofstars.createGravitySystem = function(particleCount) {
     for (var p = 0; p < particleCount; p++) {
         var pX = Math.random() * 500 - 250;
         var pY = Math.random() * 500 - 250;
-        var pZ = Math.random() * 100 - 50;
+        var pZ = Math.random() * 100 - 50;w
         
 
         if(p === 0) {
