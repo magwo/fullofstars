@@ -79,14 +79,6 @@ fullofstars.applyBruteForceNewtonianGravity = function(celestials) {
 }
 
 
-// Smart gravity application system... hmm
-// Interaction combination table
-//
-// 1. Find close interactions
-// 2. Handle close interactions
-// 3. Add close interactions to interaction table, with sorted ids [50: [51, 60, 112], ]
-// 2. Iterate K times for non-close interactions, where K is related to update interval on non-close interactions
-
 fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
     var applicator = {};
 
@@ -191,21 +183,29 @@ fullofstars.MAX_MASS = 100000000000000;
 fullofstars.createGravitySystem = function(particleCount) {
     var bodies = [];
 
+    var side = Math.sqrt(particleCount*1000);
+
     for (var p = 0; p < particleCount; p++) {
-        var pX = Math.random() * 1000 - 500;
-        var pY = Math.random() * 1000 - 500;
+        var pX = Math.random() * side - side*0.5;
+        var pY = Math.random() * side - side*0.5;
         var pZ = 0;//Math.random() * 100 - 50;
         
 
         if(p === 0) {
-            var pos = new THREE.Vector3(0,0,0);
+            var pos = new THREE.Vector3(-300,0,0);
             var mass = fullofstars.MAX_MASS * 1000;
             var xVel = 0;
-            var yVel = 0;
+            var yVel = 60;
+        }
+        else if(p === 1) {
+            var pos = new THREE.Vector3(300,0,0);
+            var mass = fullofstars.MAX_MASS * 1000;
+            var xVel = 0;
+            var yVel = -60;
         }
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
-            var mass = fullofstars.MAX_MASS * 0.2 * Math.random() * Math.random();
+            var mass = fullofstars.MAX_MASS * 0.1 * Math.random() * Math.random();
             var xVel = 80*Math.sign(pos.y);
             var yVel = -80*Math.sign(pos.x);
         }

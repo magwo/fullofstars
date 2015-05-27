@@ -26,8 +26,8 @@ fullofstars.createAllMaterials = function() {
 	var vortexTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [0,1]);
 
 	return {
-		bright: createParticleMaterial(brightTexture, 180, 0xffffff),
-		dust: createParticleMaterial(dustTexture, 160, 0x888888),
+		bright: createParticleMaterial(brightTexture,60, 0xffffff),
+		dust: createParticleMaterial(dustTexture, 100, 0x888888),
 		debrisLarge: createParticleMaterial(debrisTexture, 200, 0x444444)
 	}
 };

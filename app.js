@@ -26,8 +26,8 @@ window.fullofstars = window.fullofstars || {};
             // add it to the geometry
             particles.vertices.push(particle);
             var massFactor = bodies[p].mass / fullofstars.MAX_MASS;
-            var color = new THREE.Color(1, 0.3 + 0.6 * massFactor, 0.3 + 0.6 * massFactor);
-            if(bodies[p].mass > 0.9999*fullofstars.MAX_MASS) { color = new THREE.Color(0,0,1.0); }
+            var color = new THREE.Color(1, 0.5 + 0.5 * massFactor, 0.5 + 0.5 * massFactor);
+            if(bodies[p].mass > 0.9999*fullofstars.MAX_MASS) { color = new THREE.Color(0,0,0); }
             var hsl = color.getHSL();
             color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
             colors[p] = color;
@@ -35,6 +35,7 @@ window.fullofstars = window.fullofstars || {};
         particles.colors = colors;
         return particles;
     }
+
 
 
     $(function() {
@@ -52,7 +53,7 @@ window.fullofstars = window.fullofstars || {};
             .1,         // Near
             10000       // Far
         );
-        camera.position.set(-15, 10, 1000);
+        camera.position.set(-15, 10, 2000);
         camera.lookAt(scene.position);
 
         fullofstars.updateViewport(window, renderer, camera);
@@ -60,7 +61,7 @@ window.fullofstars = window.fullofstars || {};
 
         var materials = fullofstars.createAllMaterials();
 
-        var BODYCOUNT = 2000;
+        var BODYCOUNT = 3000;
         var FAR_UPDATE_PERIOD = 4.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
@@ -72,7 +73,7 @@ window.fullofstars = window.fullofstars || {};
         var meshDust = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.6), materials.dust );
         var meshDebris = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.3), materials.debrisLarge )
         scene.add( mesh );
-        //scene.add( meshDust );
+        scene.add( meshDust );
         //scene.add( meshDebris );
 
 
@@ -102,7 +103,7 @@ window.fullofstars = window.fullofstars || {};
                     mesh.geometry.vertices[i].copy(bodies[i].position);
                 }
                 // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
-                while(accumulatedFarDt >= 1.0 / 60.0) {
+                if(accumulatedFarDt >= 1.0 / 60.0) {
                     gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
                     accumulatedFarDt -= 1.0/60;
                 }
