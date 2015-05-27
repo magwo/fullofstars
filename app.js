@@ -27,7 +27,7 @@ window.fullofstars = window.fullofstars || {};
             particles.vertices.push(particle);
             var massFactor = bodies[p].mass / fullofstars.MAX_MASS;
             var color = new THREE.Color(1, 0.3 + 0.6 * massFactor, 0.3 + 0.6 * massFactor);
-            if(bodies[p].mass > 0.9999*fullofstars.MAX_MASS) { color = new THREE.Color(0,0,0); }
+            if(bodies[p].mass > 0.9999*fullofstars.MAX_MASS) { color = new THREE.Color(0,0,1.0); }
             var hsl = color.getHSL();
             color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
             colors[p] = color;
@@ -60,7 +60,12 @@ window.fullofstars = window.fullofstars || {};
 
         var materials = fullofstars.createAllMaterials();
 
-        var bodies = fullofstars.createGravitySystem(1000);
+        var BODYCOUNT = 2000;
+        var FAR_UPDATE_PERIOD = 4.0; // How long between updates of far interactions
+        var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
+        console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
+
+        var bodies = fullofstars.createGravitySystem(BODYCOUNT);
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
@@ -82,8 +87,13 @@ window.fullofstars = window.fullofstars || {};
         }
 
         var lastT = 0.0;
+        var accumulatedFarDt = 0.0;
+        var gravityApplicator = fullofstars.createTwoTierSmartGravityApplicator(bodies);
+        gravityApplicator.updateForces(bodies.length);
         function update(t) {
             var dt = (t - lastT) * 0.001 * timeScale;
+            dt = Math.min(1.0 / 60.0, dt); // Clamp
+            accumulatedFarDt += dt;
             var useVerletUpdate = true;
             if(useVerletUpdate) {
                 // This step updates positions
@@ -92,7 +102,10 @@ window.fullofstars = window.fullofstars || {};
                     mesh.geometry.vertices[i].copy(bodies[i].position);
                 }
                 // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
-                fullofstars.applyBruteForceNewtonianGravity(bodies, dt); // One of these should be removable...
+                while(accumulatedFarDt >= 1.0 / 60.0) {
+                    gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
+                    accumulatedFarDt -= 1.0/60;
+                }
                 for(var i=0, len=bodies.length; i<len; i++) {
                     var body = bodies[i];
                     body.velocityVerletUpdate(dt, false);

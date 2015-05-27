@@ -90,14 +90,14 @@ fullofstars.applyBruteForceNewtonianGravity = function(celestials) {
 fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
     var applicator = {};
 
-    var closeInteractions = [];
+    var closeInteractions = _.map(celestials, function() { return []; });
     var closeInteractionCount = 0;
 
     var farForces = _.map(celestials, function() { return new THREE.Vector3(0, 0, 0); });
 
     var currentLongI = 0;
 
-    var FAR_THRESHOLD_SQR = Math.pow(20, 2); // TODO: Make this more related to mass and distance combined
+    var FAR_THRESHOLD_SQR = Math.pow(100, 2); // TODO: Make this more related to mass and distance combined
 
     // TODO: Inline this when mature solution
     // Returns: Whether this should be a close or far interaction
@@ -106,11 +106,11 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
         var sqrDist = body1To2.lengthSq();
         var force = GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / sqrDist);
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
-        var forceOnBody = bodyToOther.setLength(force);
+        var forceOnBody = body1To2.setLength(force);
         body1.force.add(forceOnBody);
         body2.force.sub(forceOnBody);
 
-        return sqrDist < FAR_THRESHOLD_SQR;
+        return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.MAX_MASS / 1.4;
     };
 
     var addGravityToVector = function(body1, body2, vector) {
@@ -118,8 +118,8 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
         var sqrDist = body1To2.lengthSq();
         var force = GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / sqrDist);
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
-        var forceOnBody = bodyToOther.setLength(force);
-        if(sqrDist < FAR_THRESHOLD_SQR) {
+        var forceOnBody = body1To2.setLength(force);
+        if(sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.MAX_MASS / 1.4) {
             return true; // This should be handled as a close interaction
         }
         vector.add(forceOnBody);
@@ -129,7 +129,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
     applicator.handleCloseInteractions = function() {
         for(var i=0, outerLen=closeInteractions.length; i<outerLen; i++) {
             for(var innerKey in closeInteractions[i]) {
-                var isClose = applyGravity(celestials[i], celestials[closeInteractions[i][j]], dt);
+                var isClose = applyGravity(celestials[i], celestials[innerKey]);
                 if(!isClose) {
                     // Remove this interaction
                     delete closeInteractions[i][innerKey];
@@ -139,9 +139,9 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
         }
     };
 
-    applicator.handleFarInteractions = function(bodyCount) {
+    applicator.handleFarInteractions = function(bodyCountToUpdateFarForcesFor) {
         var celestCount = celestials.length;
-        for(var n=0; n<bodyCount; n++) {
+        for(var n=0; n<bodyCountToUpdateFarForcesFor; n++) {
             currentLongI++;
             if(currentLongI >= celestCount) {
                 currentLongI = 0;
@@ -149,16 +149,22 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
 
             // Make a sum of all the other bodies attraction forces and save them
             var farForce = farForces[currentLongI];
-            farFoce.set(0,0,0);
+            farForce.set(0,0,0);
             var body1 = celestials[currentLongI];
             for(var j=0; j<celestCount; j++) {
                 if(j != currentLongI) {
-                    if(!addGravityToVector(body1, celestials[j], farForce)) {
-                        // Should handle this as a close interaction
-                        closeInteractions[currentLongI][j] = true;
+                    var sortedI = currentLongI < j ? currentLongI : j;
+                    var sortedJ = currentLongI < j ? j : currentLongI;
+                    if(closeInteractions[sortedI][sortedJ] !== true) {
+                        if(addGravityToVector(body1, celestials[j], farForce)) {
+                            // Should handle this as a close interaction
+                            closeInteractions[sortedI][sortedJ] = true;
+                            closeInteractionCount++;
+                        }
                     }
                 }
             }
+            farForces[currentLongI] = farForce;
         }
     }
 
@@ -169,14 +175,13 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
     }
                 
 
-    var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
-
-    applicator.apply = function() {
-        applicator.handleFarInteractions(1); // TODO: Consider the count, should relate to number of bodies and desired precision
-        applicator.applyFarForces();
+    
+    applicator.updateForces = function(bodyCountToUpdateFarForcesFor) {
+        //console.log("closeInteractionCount", closeInteractionCount);
         applicator.handleCloseInteractions();
+        applicator.handleFarInteractions(bodyCountToUpdateFarForcesFor);
+        applicator.applyFarForces();
     };
-
     return applicator;
 }
 
@@ -187,9 +192,9 @@ fullofstars.createGravitySystem = function(particleCount) {
     var bodies = [];
 
     for (var p = 0; p < particleCount; p++) {
-        var pX = Math.random() * 500 - 250;
-        var pY = Math.random() * 500 - 250;
-        var pZ = Math.random() * 100 - 50;
+        var pX = Math.random() * 1000 - 500;
+        var pY = Math.random() * 1000 - 500;
+        var pZ = 0;//Math.random() * 100 - 50;
         
 
         if(p === 0) {
@@ -200,9 +205,9 @@ fullofstars.createGravitySystem = function(particleCount) {
         }
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
-            var mass = fullofstars.MAX_MASS * Math.random() * Math.random();
-            var xVel = 120*Math.sign(pos.y);
-            var yVel = -120*Math.sign(pos.x);
+            var mass = fullofstars.MAX_MASS * 0.2 * Math.random() * Math.random();
+            var xVel = 80*Math.sign(pos.y);
+            var yVel = -80*Math.sign(pos.x);
         }
         var body = new PointMassBody(mass, pos, new THREE.Vector3(xVel, yVel, 0));
         bodies.push(body);
