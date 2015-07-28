@@ -25,9 +25,9 @@ window.fullofstars = window.fullofstars || {};
             particle = bodies[p].position;
             // add it to the geometry
             particles.vertices.push(particle);
-            var massFactor = bodies[p].mass / fullofstars.MAX_MASS;
+            var massFactor = bodies[p].mass / fullofstars.TYPICAL_STAR_MASS;
             var color = new THREE.Color(1, 0.5 + 0.5 * massFactor, 0.5 + 0.5 * massFactor);
-            if(bodies[p].mass > 0.9999*fullofstars.MAX_MASS) { color = new THREE.Color(0,0,0); }
+            if(bodies[p].mass > 0.9999*fullofstars.TYPICAL_STAR_MASS * 100) { color = new THREE.Color(0,0,0); }
             var hsl = color.getHSL();
             color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
             colors[p] = color;
@@ -51,10 +51,10 @@ window.fullofstars = window.fullofstars || {};
         var camera = new THREE.PerspectiveCamera(
             35,         // Field of view
             W / H,  // Aspect ratio
-            .1,         // Near
-            10000       // Far
+            .0001 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE,         // Near
+            10 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE       // Far
         );
-        camera.position.set(-15, 10, 2000);
+        camera.position.set(-15, 10, 3 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE);
         camera.lookAt(scene.position);
 
         fullofstars.updateViewport(window, renderer, camera);
@@ -78,10 +78,11 @@ window.fullofstars = window.fullofstars || {};
         //scene.add( meshDebris );
 
 
-        var timeScale = 1.0;
+
+        var TIME_SCALE = Math.pow(10, 10);
+        var timeScale = TIME_SCALE;
         $("body").on("keypress", function(e) {
-            console.log(e.which);
-            if(e.which == 32) { timeScale = 1.0 - timeScale; }
+            if(e.which == 32) { timeScale = TIME_SCALE - timeScale; }
         });
 
         function render() {
@@ -94,7 +95,8 @@ window.fullofstars = window.fullofstars || {};
         gravityApplicator.updateForces(bodies.length);
         function update(t) {
             var dt = (t - lastT) * 0.001 * timeScale;
-            dt = Math.min(1.0 / 60.0, dt); // Clamp
+            dt = Math.min(TIME_SCALE / 60.0, dt); // Clamp
+            console.log("dt is", dt);
             accumulatedFarDt += dt;
             var useVerletUpdate = true;
             if(useVerletUpdate) {
@@ -104,9 +106,9 @@ window.fullofstars = window.fullofstars || {};
                     mesh.geometry.vertices[i].copy(bodies[i].position);
                 }
                 // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
-                if(accumulatedFarDt >= 1.0 / 60.0) {
+                if(accumulatedFarDt >= TIME_SCALE / 60.0) {
                     gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
-                    accumulatedFarDt -= 1.0/60;
+                    accumulatedFarDt -= TIME_SCALE/60;
                 }
                 for(var i=0, len=bodies.length; i<len; i++) {
                     var body = bodies[i];
