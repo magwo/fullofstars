@@ -44,7 +44,7 @@ window.fullofstars = window.fullofstars || {};
 
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize( W, H );
-        renderer.setClearColor( 0x000000);
+        renderer.setClearColor(0x000000);
         document.body.appendChild(renderer.domElement);
         var scene = new THREE.Scene();
 
