@@ -11,7 +11,7 @@ window.fullofstars = window.fullofstars || {};
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
     };
-    
+
 
 
     function createCloudGeometryFromBodies(bodies, saturationFactor) {
@@ -19,7 +19,7 @@ window.fullofstars = window.fullofstars || {};
         var particleCount = bodies.length;
         var particles = new THREE.Geometry();
         var colors = [];
-        
+
         // now create the individual particles
         for (var p = 0; p < particleCount; p++) {
             particle = bodies[p].position;
@@ -44,6 +44,7 @@ window.fullofstars = window.fullofstars || {};
 
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize( W, H );
+        renderer.setClearColor( 0x000000);
         document.body.appendChild(renderer.domElement);
         var scene = new THREE.Scene();
 
