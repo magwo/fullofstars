@@ -36,9 +36,9 @@ PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
         velocityIsh.copy(this.velocity);
         tempVec2.set(force.x*accelerationFactor, force.y*accelerationFactor, force.z*accelerationFactor);
         velocityIsh.add(tempVec2);
-        if(velocityIsh.lengthSq() > fullofstars.LIGHT_SPEED_SCALED_SQRD) {
-            velocityIsh.setLength(fullofstars.LIGHT_SPEED_SCALED*0.999);
-        }
+        // if(velocityIsh.lengthSq() > fullofstars.LIGHT_SPEED_SCALED_SQRD) {
+        //     velocityIsh.setLength(fullofstars.LIGHT_SPEED_SCALED*0.999);
+        // }
         velocityIsh.multiplyScalar(dt); // Temp velocity(ish) is now timestep multiplied
         //position += timestep * (velocity + timestep * acceleration / 2);
         this.position.add(velocityIsh);
@@ -54,10 +54,10 @@ PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
         // Dampen velocity (retarded version of energy emission?)
         //this.velocity.multiplyScalar(0.999);
 
-        // Limit velocity to light speed (does this even make sense?)
-        if(this.velocity.lengthSq() > fullofstars.LIGHT_SPEED_SCALED_SQRD) {
-            this.velocity.setLength(fullofstars.LIGHT_SPEED_SCALED*0.999);
-        }
+        // // Limit velocity to light speed (does this even make sense?)
+        // if(this.velocity.lengthSq() > fullofstars.LIGHT_SPEED_SCALED_SQRD) {
+        //     this.velocity.setLength(fullofstars.LIGHT_SPEED_SCALED*0.999);
+        // }
     }
     this.prevForce.copy(force);
     this.force.set(0,0,0);
@@ -82,7 +82,7 @@ fullofstars.applyBruteForceNewtonianGravity = function(celestials) {
                 bodyToOther.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
 
                 var sqrDist = bodyToOther.lengthSq();
-                var force = fullofstars.GRAVITATIONAL_CONSTANT * ((bodyMass*otherBodyMass) / sqrDist);
+                var force = fullofstars.GRAVITATIONAL_CONSTANT * ((bodyMass*otherBodyMass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
 
                 // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
                 var forceOnBody = bodyToOther.setLength(force);
@@ -112,20 +112,21 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
         var body1To2 = tempVec.subVectors(body2.position, body1.position);
         body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
         var sqrDist = body1To2.lengthSq();
-        var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / sqrDist);
+        //console.log("sqrDist", sqrDist);
+        var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
         var forceOnBody = body1To2.setLength(force);
         body1.force.add(forceOnBody);
         body2.force.sub(forceOnBody);
 
-        return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.MAX_MASS / 1.4;
+        return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100;
     };
 
     var addGravityToVector = function(body1, body2, vector) {
         var body1To2 = tempVec.subVectors(body2.position, body1.position);
         body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
         var sqrDist = body1To2.lengthSq();
-        var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / sqrDist);
+        var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
         var forceOnBody = body1To2.setLength(force);
         if(sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100) {
@@ -200,34 +201,36 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
 fullofstars.createGravitySystem = function(particleCount) {
     var bodies = [];
 
-    var typicalStarSpeed = 600 * 1000 * fullofstars.UNIVERSE_SCALE;
+    var typicalStarSpeed = 20000000 * 1000 * fullofstars.UNIVERSE_SCALE;
+    console.log("typical star speed", typicalStarSpeed);
     var side = Math.sqrt(particleCount*1000);
 
     for (var p = 0; p < particleCount; p++) {
         var pX = Math.random() * side - side*0.5;
-        var pY = Math.random() * side - side*0.5;
-        var pZ = 0;//Math.random() * 100 - 50;
+        var pY = Math.random() * side * 0.1 - side * 0.05;
+        var pZ = Math.random() * side - side*0.5;
 
 
         if(p === 0) {
-            var pos = new THREE.Vector3(-300,0,0);
-            var mass = fullofstars.TYPICAL_STAR_MASS * 1000;
+            var pos = new THREE.Vector3(0,0,0);
+            var mass = fullofstars.TYPICAL_STAR_MASS * 10000;
             var xVel = 0;
-            var yVel = typicalStarSpeed;
+            var yVel = 0;
         }
-        else if(p === 1) {
-            var pos = new THREE.Vector3(300,0,0);
-            var mass = fullofstars.TYPICAL_STAR_MASS * 1000;
-            var xVel = 0;
-            var yVel = -typicalStarSpeed;
-        }
+        // else if(p === 1) {
+        //     var pos = new THREE.Vector3(300,0,0);
+        //     var mass = fullofstars.TYPICAL_STAR_MASS * 1000;
+        //     var xVel = 0;
+        //     var yVel = -typicalStarSpeed;
+        // }
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
             var mass = fullofstars.TYPICAL_STAR_MASS * 2 * Math.random() * Math.random();
-            var xVel = Math.sign(pos.y) * typicalStarSpeed * 1.2;
-            var yVel = Math.sign(pos.x) * typicalStarSpeed * 1.2;
+            var xVel = Math.sign(pos.y) * typicalStarSpeed;
+            var yVel = Math.sign(pos.x) * typicalStarSpeed;
+            var zVel = Math.sign(pos.x) * typicalStarSpeed;
         }
-        var body = new PointMassBody(mass, pos, new THREE.Vector3(xVel, yVel, 0));
+        var body = new PointMassBody(mass, pos, new THREE.Vector3(xVel, yVel, zVel));
         bodies.push(body);
     }
     return bodies;

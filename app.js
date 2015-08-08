@@ -26,7 +26,7 @@ window.fullofstars = window.fullofstars || {};
             // add it to the geometry
             particles.vertices.push(particle);
             var massFactor = bodies[p].mass / fullofstars.TYPICAL_STAR_MASS;
-            var color = new THREE.Color(1, 0.5 + 0.5 * massFactor, 0.5 + 0.5 * massFactor);
+            var color = new THREE.Color(1, 0.7 + 0.3 * massFactor, 0.7 + 0.3 * massFactor);
             if(bodies[p].mass > 0.9999*fullofstars.TYPICAL_STAR_MASS * 100) { color = new THREE.Color(0,0,0); }
             var hsl = color.getHSL();
             color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
@@ -54,8 +54,6 @@ window.fullofstars = window.fullofstars || {};
             .0001 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE,         // Near
             10 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE       // Far
         );
-        camera.position.set(-15, 10, 3 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE);
-        camera.lookAt(scene.position);
 
         fullofstars.updateViewport(window, renderer, camera);
         window.addEventListener('resize', function() {fullofstars.updateViewport(window, renderer, camera)});
@@ -63,7 +61,7 @@ window.fullofstars = window.fullofstars || {};
         var materials = fullofstars.createAllMaterials();
 
         var BODYCOUNT = 3000;
-        var FAR_UPDATE_PERIOD = 4.0; // How long between updates of far interactions
+        var FAR_UPDATE_PERIOD = 10.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
 
@@ -71,15 +69,15 @@ window.fullofstars = window.fullofstars || {};
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
-        var meshDust = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.6), materials.dust );
-        var meshDebris = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.3), materials.debrisLarge )
+        var meshDust = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.9), materials.dust );
+        var meshDebris = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.7), materials.debrisLarge )
         scene.add( mesh );
         scene.add( meshDust );
-        //scene.add( meshDebris );
+        scene.add( meshDebris );
 
 
 
-        var TIME_SCALE = Math.pow(10, 10);
+        var TIME_SCALE = Math.pow(10, 9);
         var timeScale = TIME_SCALE;
         $("body").on("keypress", function(e) {
             if(e.which == 32) { timeScale = TIME_SCALE - timeScale; }
@@ -91,13 +89,27 @@ window.fullofstars = window.fullofstars || {};
 
         var lastT = 0.0;
         var accumulatedFarDt = 0.0;
+        var accumulatedRealDtTotal = 0.0;
         var gravityApplicator = fullofstars.createTwoTierSmartGravityApplicator(bodies);
         gravityApplicator.updateForces(bodies.length);
         function update(t) {
             var dt = (t - lastT) * 0.001 * timeScale;
-            dt = Math.min(TIME_SCALE / 60.0, dt); // Clamp
-            console.log("dt is", dt);
+            dt = Math.min(1 / 60.0, dt); // Clamp
+            accumulatedRealDtTotal += dt;
+
+            var positionScale = 2 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
+            var cameraRotationSpeed = 0.3;
+            camera.position.set(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale);
+            //camera.position.set(positionScale, 0, positionScale);
+
+            var cameraLookatRotationSpeed = 0.8;
+            var cameraLookAtScale = 0.1 * positionScale;
+            camera.lookAt(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale));
+
+
+            dt *= TIME_SCALE;
             accumulatedFarDt += dt;
+
             var useVerletUpdate = true;
             if(useVerletUpdate) {
                 // This step updates positions
