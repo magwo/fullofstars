@@ -69,13 +69,7 @@ window.fullofstars = window.fullofstars || {};
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
-        var meshDust = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.9), materials.dust );
-        var meshDebris = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 0.7), materials.debrisLarge )
         scene.add( mesh );
-        scene.add( meshDust );
-        scene.add( meshDebris );
-
-
 
         var TIME_SCALE = Math.pow(10, 9);
         var timeScale = TIME_SCALE;
@@ -110,36 +104,23 @@ window.fullofstars = window.fullofstars || {};
             dt *= TIME_SCALE;
             accumulatedFarDt += dt;
 
-            var useVerletUpdate = true;
-            if(useVerletUpdate) {
-                // This step updates positions
-                for(var i=0, len=bodies.length; i<len; i++) {
-                    bodies[i].velocityVerletUpdate(dt, true);
-                    mesh.geometry.vertices[i].copy(bodies[i].position);
-                }
-                // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
-                if(accumulatedFarDt >= TIME_SCALE / 60.0) {
-                    gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
-                    accumulatedFarDt -= TIME_SCALE/60;
-                }
-                for(var i=0, len=bodies.length; i<len; i++) {
-                    var body = bodies[i];
-                    body.velocityVerletUpdate(dt, false);
-                    body.force.copy(body.prevForce);
-                }
+            // This step updates positions
+            for(var i=0, len=bodies.length; i<len; i++) {
+                bodies[i].velocityVerletUpdate(dt, true);
+                mesh.geometry.vertices[i].copy(bodies[i].position);
             }
-            else {
-                fullofstars.applyBruteForceNewtonianGravity(bodies, dt);
-                for(var i=0, len=bodies.length; i<len; i++) {
-                    bodies[i].updateAndResetForce(dt);
-                    mesh.geometry.vertices[i].copy(bodies[i].position);
-                }
+            // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
+            if(accumulatedFarDt >= TIME_SCALE / 60.0) {
+                gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
+                accumulatedFarDt -= TIME_SCALE/60;
+            }
+
+            for(var i=0, len=bodies.length; i<len; i++) {
+                var body = bodies[i];
+                body.velocityVerletUpdate(dt, false);
+                body.force.copy(body.prevForce);
             }
             mesh.geometry.verticesNeedUpdate = true;
-            meshDust.geometry.verticesNeedUpdate = true;
-            meshDebris.geometry.verticesNeedUpdate = true;
-
-            //mesh.rotation.x += dt*0.003;
             lastT = t;
         };
 

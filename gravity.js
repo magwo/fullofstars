@@ -36,62 +36,21 @@ PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
         velocityIsh.copy(this.velocity);
         tempVec2.set(force.x*accelerationFactor, force.y*accelerationFactor, force.z*accelerationFactor);
         velocityIsh.add(tempVec2);
-        // if(velocityIsh.lengthSq() > fullofstars.LIGHT_SPEED_SCALED_SQRD) {
-        //     velocityIsh.setLength(fullofstars.LIGHT_SPEED_SCALED*0.999);
-        // }
         velocityIsh.multiplyScalar(dt); // Temp velocity(ish) is now timestep multiplied
-        //position += timestep * (velocity + timestep * acceleration / 2);
+        //VERLET: position += timestep * (velocity + timestep * acceleration / 2);
         this.position.add(velocityIsh);
     } else {
         // Velocity step
-        // velocity += timestep * (acceleration + newAcceleration) / 2;
+        //VERLET: velocity += timestep * (acceleration + newAcceleration) / 2;
         var accelerationFactor = this.invMass * dt * 0.5;
         var accelerationIsh = tempVec;
         var prevForce = this.prevForce;
         accelerationIsh.set((force.x+prevForce.x)*accelerationFactor, (force.y+prevForce.y)*accelerationFactor, (force.z+prevForce.z)*accelerationFactor);
         this.velocity.add(accelerationIsh);
-
-        // Dampen velocity (retarded version of energy emission?)
-        //this.velocity.multiplyScalar(0.999);
-
-        // // Limit velocity to light speed (does this even make sense?)
-        // if(this.velocity.lengthSq() > fullofstars.LIGHT_SPEED_SCALED_SQRD) {
-        //     this.velocity.setLength(fullofstars.LIGHT_SPEED_SCALED*0.999);
-        // }
     }
     this.prevForce.copy(force);
     this.force.set(0,0,0);
 };
-
-
-fullofstars.applyBruteForceNewtonianGravity = function(celestials) {
-    // Apply gravitational forces to all bodies, from all celestial bodies
-    var tempVec = new THREE.Vector3();
-    for(var i=0, celestLen=celestials.length; i<celestLen; i++) {
-        var body = celestials[i];
-        var bodyMass = body.mass;
-        var bodyPos = body.position;
-        for(var j=i+1, len=celestials.length; j<len; j++) {
-            if(i !== j) {
-            	var otherBody = celestials[j];
-            	//console.log("applying gravity", body, otherBody);
-                var otherBodyPos = otherBody.position;
-                var otherBodyMass = otherBody.mass;
-                var bodyToOther = tempVec.subVectors(otherBodyPos, bodyPos);
-
-                bodyToOther.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
-
-                var sqrDist = bodyToOther.lengthSq();
-                var force = fullofstars.GRAVITATIONAL_CONSTANT * ((bodyMass*otherBodyMass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
-
-                // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
-                var forceOnBody = bodyToOther.setLength(force);
-                body.force.add(forceOnBody);
-                otherBody.force.sub(forceOnBody);
-            }
-        }
-    }
-}
 
 
 fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
@@ -107,12 +66,11 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
     var FAR_THRESHOLD_SQR = Math.pow(100 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2); // TODO: Make this more related to mass and distance combined
 
     // TODO: Inline this when mature solution
-    // Returns: Whether this should be a close or far interaction
+    // Returns: Whether this should be a close interaction
     var applyGravity = function(body1, body2) {
         var body1To2 = tempVec.subVectors(body2.position, body1.position);
         body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
         var sqrDist = body1To2.lengthSq();
-        //console.log("sqrDist", sqrDist);
         var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
         var forceOnBody = body1To2.setLength(force);
@@ -122,6 +80,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
         return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100;
     };
 
+    // Returns: Whether this should be a close interaction
     var addGravityToVector = function(body1, body2, vector) {
         var body1To2 = tempVec.subVectors(body2.position, body1.position);
         body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
@@ -217,12 +176,6 @@ fullofstars.createGravitySystem = function(particleCount) {
             var xVel = 0;
             var yVel = 0;
         }
-        // else if(p === 1) {
-        //     var pos = new THREE.Vector3(300,0,0);
-        //     var mass = fullofstars.TYPICAL_STAR_MASS * 1000;
-        //     var xVel = 0;
-        //     var yVel = -typicalStarSpeed;
-        // }
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
             var mass = fullofstars.TYPICAL_STAR_MASS * 2 * Math.random() * Math.random();
