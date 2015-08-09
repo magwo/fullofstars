@@ -60,16 +60,20 @@ window.fullofstars = window.fullofstars || {};
 
         var materials = fullofstars.createAllMaterials();
 
-        var BODYCOUNT = 3000;
-        var FAR_UPDATE_PERIOD = 10.0; // How long between updates of far interactions
+        var BODYCOUNT = 100;
+        var BODYCOUNT_VFX = 20000;
+        var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
 
-        var bodies = fullofstars.createGravitySystem(BODYCOUNT);
+        var bodies = fullofstars.createGravitySystem(BODYCOUNT, true);
+        var bodiesVfx = fullofstars.createGravitySystem(BODYCOUNT_VFX, false);
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
+        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.brightSmall );
         scene.add( mesh );
+        scene.add( meshVfx );
 
         var TIME_SCALE = Math.pow(10, 9);
         var timeScale = TIME_SCALE;
@@ -84,8 +88,11 @@ window.fullofstars = window.fullofstars || {};
         var lastT = 0.0;
         var accumulatedFarDt = 0.0;
         var accumulatedRealDtTotal = 0.0;
-        var gravityApplicator = fullofstars.createTwoTierSmartGravityApplicator(bodies);
+        var gravityApplicator = fullofstars.createTwoTierSmartGravityApplicator(bodies, bodies);
+        var gravityApplicatorVfx = fullofstars.createTwoTierSmartGravityApplicator(bodiesVfx, bodies);
         gravityApplicator.updateForces(bodies.length);
+        gravityApplicatorVfx.updateForces(bodiesVfx.length);
+
         function update(t) {
             var dt = (t - lastT) * 0.001 * timeScale;
             dt = Math.min(1 / 60.0, dt); // Clamp
@@ -109,9 +116,15 @@ window.fullofstars = window.fullofstars || {};
                 bodies[i].velocityVerletUpdate(dt, true);
                 mesh.geometry.vertices[i].copy(bodies[i].position);
             }
+            // This step updates positions
+            for(var i=0, len=bodiesVfx.length; i<len; i++) {
+                bodiesVfx[i].velocityVerletUpdate(dt, true);
+                meshVfx.geometry.vertices[i].copy(bodiesVfx[i].position);
+            }
             // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
             if(accumulatedFarDt >= TIME_SCALE / 60.0) {
                 gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
+                gravityApplicatorVfx.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
                 accumulatedFarDt -= TIME_SCALE/60;
             }
 
@@ -120,7 +133,13 @@ window.fullofstars = window.fullofstars || {};
                 body.velocityVerletUpdate(dt, false);
                 body.force.copy(body.prevForce);
             }
+            for(var i=0, len=bodiesVfx.length; i<len; i++) {
+                var body = bodiesVfx[i];
+                body.velocityVerletUpdate(dt, false);
+                body.force.copy(body.prevForce);
+            }
             mesh.geometry.verticesNeedUpdate = true;
+            meshVfx.geometry.verticesNeedUpdate = true;
             lastT = t;
         };
 

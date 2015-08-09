@@ -53,15 +53,21 @@ PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
 };
 
 
-fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
+// TODO: How to support visual-only particles:
+// 1. Make this support two groups of celestials - first one is the one affected by
+//    the other group.
+// 2. Normal case: both groups are the same.
+// 3. Visuals-only case: first group is a visuals-only group of celestials
+fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, attractingCelestials) {
     var applicator = {};
+    var attractingIsAttracted = attractingCelestials === attractedCelestials;
 
-    var closeInteractions = _.map(celestials, function() { return []; });
+    var closeInteractions = _.map(attractedCelestials, function() { return []; });
     var closeInteractionCount = 0;
 
-    var farForces = _.map(celestials, function() { return new THREE.Vector3(0, 0, 0); });
+    var farForces = _.map(attractedCelestials, function() { return new THREE.Vector3(0, 0, 0); });
 
-    var currentLongI = 0;
+    var currentFarAttractedIndex = 0;
 
     var FAR_THRESHOLD_SQR = Math.pow(100 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2); // TODO: Make this more related to mass and distance combined
 
@@ -75,8 +81,10 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
         var forceOnBody = body1To2.setLength(force);
         body1.force.add(forceOnBody);
-        body2.force.sub(forceOnBody);
 
+        if(attractingIsAttracted); {
+            body2.force.sub(forceOnBody);
+        }
         return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100;
     };
 
@@ -97,8 +105,10 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
 
     applicator.handleCloseInteractions = function() {
         for(var i=0, outerLen=closeInteractions.length; i<outerLen; i++) {
+            // TODO: Using for-in iteration and objects like this probably has terrible performance
+            // Should probably change to simple arrays instead.
             for(var innerKey in closeInteractions[i]) {
-                var isClose = applyGravity(celestials[i], celestials[innerKey]);
+                var isClose = applyGravity(attractedCelestials[i], attractingCelestials[innerKey]);
                 if(!isClose) {
                     // Remove this interaction
                     delete closeInteractions[i][innerKey];
@@ -109,40 +119,42 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
     };
 
     applicator.handleFarInteractions = function(bodyCountToUpdateFarForcesFor) {
-        var celestCount = celestials.length;
+        var attractedCount = attractedCelestials.length;
         for(var n=0; n<bodyCountToUpdateFarForcesFor; n++) {
-            currentLongI++;
-            if(currentLongI >= celestCount) {
-                currentLongI = 0;
+            currentFarAttractedIndex++;
+            if(currentFarAttractedIndex >= attractedCount) {
+                currentFarAttractedIndex = 0;
             }
 
             // Make a sum of all the other bodies attraction forces and save them
-            var farForce = farForces[currentLongI];
+            var farForce = farForces[currentFarAttractedIndex];
             farForce.set(0,0,0);
-            var body1 = celestials[currentLongI];
-            for(var j=0; j<celestCount; j++) {
-                if(j != currentLongI) {
-                    var sortedI = currentLongI < j ? currentLongI : j;
-                    var sortedJ = currentLongI < j ? j : currentLongI;
-                    if(closeInteractions[sortedI][sortedJ] !== true) {
-                        if(addGravityToVector(body1, celestials[j], farForce)) {
+            var attractedBody = attractedCelestials[currentFarAttractedIndex];
+            // TODO: Details with attracting/attracted storage here...
+            for(var attractingIndex=0, len=attractingCelestials.length; attractingIndex<len; attractingIndex++) {
+                if(attractingIndex !== currentFarAttractedIndex || !attractingIsAttracted) {
+                    var isCloseInteraction = closeInteractions[currentFarAttractedIndex][attractingIndex] === true;
+                    if(!isCloseInteraction && attractingIsAttracted) {
+                        isCloseInteraction = closeInteractions[attractingIndex][currentFarAttractedIndex] === true;
+                    }
+                    if(!isCloseInteraction) {
+                        if(addGravityToVector(attractedBody, attractingCelestials[attractingIndex], farForce)) {
                             // Should handle this as a close interaction
-                            closeInteractions[sortedI][sortedJ] = true;
+                            closeInteractions[currentFarAttractedIndex][attractingIndex] = true;
                             closeInteractionCount++;
                         }
                     }
                 }
             }
-            farForces[currentLongI] = farForce;
+            farForces[currentFarAttractedIndex] = farForce;
         }
     }
 
     applicator.applyFarForces = function() {
-        for(var i=0, len=celestials.length; i<len; i++) {
-            celestials[i].force.add(farForces[i]);
+        for(var i=0, len=attractedCelestials.length; i<len; i++) {
+            attractedCelestials[i].force.add(farForces[i]);
         }
     }
-
 
 
     applicator.updateForces = function(bodyCountToUpdateFarForcesFor) {
@@ -157,12 +169,12 @@ fullofstars.createTwoTierSmartGravityApplicator = function(celestials) {
 
 
 
-fullofstars.createGravitySystem = function(particleCount) {
+fullofstars.createGravitySystem = function(particleCount, makeBlackHole) {
     var bodies = [];
 
     var typicalStarSpeed = 20000000 * 1000 * fullofstars.UNIVERSE_SCALE;
     console.log("typical star speed", typicalStarSpeed);
-    var side = Math.sqrt(particleCount*1000);
+    var side = 2000.0;
 
     for (var p = 0; p < particleCount; p++) {
         var pX = Math.random() * side - side*0.5;
@@ -170,7 +182,8 @@ fullofstars.createGravitySystem = function(particleCount) {
         var pZ = Math.random() * side - side*0.5;
 
 
-        if(p === 0) {
+        if(makeBlackHole && p === 0) {
+          console.log("Creating black hole");
             var pos = new THREE.Vector3(0,0,0);
             var mass = fullofstars.TYPICAL_STAR_MASS * 10000;
             var xVel = 0;
