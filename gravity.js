@@ -15,7 +15,6 @@ PointMassBody.prototype = Object.create(Object.prototype);
 
 var tempVec = new THREE.Vector3(0,0,0); // To avoid allocations during updates
 var tempVec2 = new THREE.Vector3(0,0,0); // To avoid allocations during updates
-var MAX_FORCE = 10000000000000000;
 PointMassBody.prototype.updateAndResetForce = function(dt) {
 	var accelerationFactor = this.invMass * dt;
 	var force = this.force;
@@ -28,7 +27,8 @@ PointMassBody.prototype.updateAndResetForce = function(dt) {
 	this.force.set(0,0,0);
 };
 
-PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
+PointMassBody.velocityVerletUpdate = function(dt, isPositionStep) {
+    // TODO: Make this operate on array instead of individual bodies
     var force = this.force;
     if(isPositionStep) {
         var accelerationFactor = this.invMass * dt * 0.5;
@@ -74,17 +74,40 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
     // TODO: Inline this when mature solution
     // Returns: Whether this should be a close interaction
     var applyGravity = function(body1, body2) {
+
+        var isBlackHoleInteraction = body1.mass+body2.mass > (fullofstars.TYPICAL_STAR_MASS * 100);
+
         var body1To2 = tempVec.subVectors(body2.position, body1.position);
         body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
         var sqrDist = body1To2.lengthSq();
+
         var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
         var forceOnBody = body1To2.setLength(force);
-        body1.force.add(forceOnBody);
 
+        var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(100 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2);
+
+        if(!isBlackHoleInteraction && sqrDist < GAS_INTERACTION_DISTANCE_SQRD) {
+            // TODO: Use gas constants instead
+            var gasForce = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
+            tempVec2.copy(body1.velocity);
+            var relativeVel = tempVec2.sub(body2.velocity);
+            var gasForceOnBody = relativeVel.multiplyScalar(gasForce*Math.pow(10, 9));
+
+            body1.force.sub(gasForceOnBody)
+            if(attractingIsAttracted); {
+                body2.force.add(gasForceOnBody);
+            }
+        }
+
+
+
+
+        body1.force.add(forceOnBody);
         if(attractingIsAttracted); {
             body2.force.sub(forceOnBody);
         }
+
         return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100;
     };
 
