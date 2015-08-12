@@ -60,14 +60,14 @@ window.fullofstars = window.fullofstars || {};
 
         // Make a skybox
         var urls = [
-            'images/BlueGreenNebula_left.jpg',
-            'images/BlueGreenNebula_right.jpg',
+            'images/BlueNebular_left.jpg',
+            'images/BlueNebular_right.jpg',
 
-            'images/BlueGreenNebula_top.jpg',
-            'images/BlueGreenNebula_bottom.jpg',
+            'images/BlueNebular_top.jpg',
+            'images/BlueNebular_bottom.jpg',
 
-            'images/BlueGreenNebula_front.jpg',
-            'images/BlueGreenNebula_back.jpg'
+            'images/BlueNebular_front.jpg',
+            'images/BlueNebular_back.jpg'
         ];
 
         var skyboxScene = new THREE.Scene();

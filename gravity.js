@@ -27,7 +27,7 @@ PointMassBody.prototype.updateAndResetForce = function(dt) {
 	this.force.set(0,0,0);
 };
 
-PointMassBody.velocityVerletUpdate = function(dt, isPositionStep) {
+PointMassBody.prototype.velocityVerletUpdate = function(dt, isPositionStep) {
     // TODO: Make this operate on array instead of individual bodies
     var force = this.force;
     if(isPositionStep) {
