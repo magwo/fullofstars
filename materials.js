@@ -21,14 +21,14 @@ fullofstars.createAllMaterials = function() {
     }
 
 	var brightTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,1]);
-	var dustTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [0,0]);
+	var dustTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,1]);
 	var debrisTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,5]);
 	var vortexTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [0,1]);
 
 	return {
-		bright: createParticleMaterial(brightTexture, 170, 0xffffff),
+		bright: createParticleMaterial(brightTexture, 220, 0xffffff),
 		brightSmall: createParticleMaterial(brightTexture, 90, 0xffffff),
-		dust: createParticleMaterial(dustTexture, 50, 0xffffff),
+		dust: createParticleMaterial(dustTexture, 100, 0xaaaaaa),
 		debrisLarge: createParticleMaterial(debrisTexture, 400, 0x000000)
 	}
 };

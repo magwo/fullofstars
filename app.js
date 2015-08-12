@@ -49,7 +49,7 @@ window.fullofstars = window.fullofstars || {};
         var scene = new THREE.Scene();
 
         var camera = new THREE.PerspectiveCamera(
-            35,         // Field of view
+            45,         // Field of view
             W / H,  // Aspect ratio
             .0001 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE,         // Near
             10 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE       // Far
@@ -58,10 +58,47 @@ window.fullofstars = window.fullofstars || {};
         fullofstars.updateViewport(window, renderer, camera);
         window.addEventListener('resize', function() {fullofstars.updateViewport(window, renderer, camera)});
 
+        // Make a skybox
+        var urls = [
+            'images/BlueGreenNebula_left.jpg',
+            'images/BlueGreenNebula_right.jpg',
+
+            'images/BlueGreenNebula_top.jpg',
+            'images/BlueGreenNebula_bottom.jpg',
+
+            'images/BlueGreenNebula_front.jpg',
+            'images/BlueGreenNebula_back.jpg'
+        ];
+
+        var skyboxScene = new THREE.Scene();
+        var skyboxCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000 );
+
+        var cubemap = THREE.ImageUtils.loadTextureCube(urls); // load textures
+        cubemap.format = THREE.RGBFormat;
+
+        var skyboxShader = THREE.ShaderLib['cube']; // init cube shader from built-in lib
+        skyboxShader.uniforms['tCube'].value = cubemap; // apply textures to shader
+
+        // create shader material
+        var skyBoxMaterial = new THREE.ShaderMaterial( {
+          fragmentShader: skyboxShader.fragmentShader,
+          vertexShader: skyboxShader.vertexShader,
+          uniforms: skyboxShader.uniforms,
+          depthWrite: false,
+          side: THREE.BackSide
+        });
+
+        // create skybox mesh
+        var skybox = new THREE.Mesh(
+          new THREE.BoxGeometry(500,500,500),
+          skyBoxMaterial
+        );
+        skyboxScene.add(skybox);
+
         var materials = fullofstars.createAllMaterials();
 
-        var BODYCOUNT = 100;
-        var BODYCOUNT_VFX = 20000;
+        var BODYCOUNT = 200;
+        var BODYCOUNT_VFX = 15000;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
@@ -71,7 +108,7 @@ window.fullofstars = window.fullofstars || {};
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
-        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.brightSmall );
+        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.dust );
         scene.add( mesh );
         scene.add( meshVfx );
 
@@ -82,6 +119,10 @@ window.fullofstars = window.fullofstars || {};
         });
 
         function render() {
+            renderer.autoclear = false;
+            renderer.autoClearColor = false;
+            skyboxCamera.quaternion.copy(camera.quaternion);
+            renderer.render( skyboxScene, skyboxCamera );
             renderer.render( scene, camera );
         }
 
@@ -98,14 +139,16 @@ window.fullofstars = window.fullofstars || {};
             dt = Math.min(1 / 60.0, dt); // Clamp
             accumulatedRealDtTotal += dt;
 
-            var positionScale = 2 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
+            var positionScale = 1.5 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
             var cameraRotationSpeed = 0.3;
-            camera.position.set(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale);
-            //camera.position.set(positionScale, 0, positionScale);
+            camera.position.copy(bodies[0].position);
+            camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
 
             var cameraLookatRotationSpeed = 0.8;
-            var cameraLookAtScale = 0.1 * positionScale;
-            camera.lookAt(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale));
+            var cameraLookAtScale = 0.2 * positionScale;
+            var cameraLookAtPos = new THREE.Vector3().copy(bodies[0].position);
+            cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
+            camera.lookAt(cameraLookAtPos);
 
 
             dt *= TIME_SCALE;
@@ -124,7 +167,7 @@ window.fullofstars = window.fullofstars || {};
             // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
             if(accumulatedFarDt >= TIME_SCALE / 60.0) {
                 gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
-                gravityApplicatorVfx.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
+                gravityApplicatorVfx.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME*20);
                 accumulatedFarDt -= TIME_SCALE/60;
             }
 
