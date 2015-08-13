@@ -83,7 +83,6 @@ PointMassBody.verletAccelerationStep = function(bodies, dt) {
 
 
 PointMassBody.velocityVerletUpdate = function(bodies, dt, isPositionStep) {
-    // Highly inlined and written for performance
     if(isPositionStep) {
         PointMassBody.verletPositionStep(bodies, dt);
     } else {
@@ -92,16 +91,11 @@ PointMassBody.velocityVerletUpdate = function(bodies, dt, isPositionStep) {
 };
 
 
-// TODO: How to support visual-only particles:
-// 1. Make this support two groups of celestials - first one is the one affected by
-//    the other group.
-// 2. Normal case: both groups are the same.
-// 3. Visuals-only case: first group is a visuals-only group of celestials
 fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, attractingCelestials) {
     var applicator = {};
     var attractingIsAttracted = attractingCelestials === attractedCelestials;
 
-    var closeInteractions = _.map(attractedCelestials, function() { return []; });
+    var closeInteractions = _.map(attractedCelestials, function() { var arr = new Array(4); arr[0] = arr[1] = arr[2] = arr[3] = -1; return arr; });
     var closeInteractionCount = 0;
 
     var farForces = _.map(attractedCelestials, function() { return new THREE.Vector3(0, 0, 0); });
@@ -145,6 +139,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
 
     // Returns: Whether this should be a close interaction
     var addGravityToVector = function(body1, body2, vector) {
+        // TODO: Inline and optimise
         var body1To2 = tempVec.subVectors(body2.position, body1.position);
         body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
         var sqrDist = body1To2.lengthSq();
@@ -159,46 +154,85 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
     };
 
     applicator.handleCloseInteractions = function() {
-        // Highly inlined for best performance
+        // Highly inlined for performance
+        var typicalStarMass = fullofstars.TYPICAL_STAR_MASS;
+        var universeScaleRecipr = fullofstars.UNIVERSE_SCALE_RECIPROCAL;
+        var gravitationalConstant = fullofstars.GRAVITATIONAL_CONSTANT;
+        var gravityEpsilon = fullofstars.GRAVITY_EPSILON;
+        var gravityEpsilonSqrd = gravityEpsilon*gravityEpsilon;
+        var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(100 * universeScaleRecipr, 2);
+
+        var body1To2X = 0.0, body1To2Y = 0.0; body1To2Z = 0.0;
+        var relativeVelX = 0.0, relativeVelY = 0.0; relativeVelZ = 0.0;
+
         for(var i=0, outerLen=closeInteractions.length; i<outerLen; i++) {
-            for(var innerKey in closeInteractions[i]) {
-
+            for(var innerI=0, innerLen=closeInteractions[i].length; innerI<innerLen; innerI++) {
+                if(closeInteractions[i][innerI] === -1) {
+                    continue;
+                }
                 var body1 = attractedCelestials[i];
-                var body2 = attractingCelestials[innerKey]
+                var body2 = attractingCelestials[closeInteractions[i][innerI]];
 
-                var isBlackHoleInteraction = body1.mass+body2.mass > (fullofstars.TYPICAL_STAR_MASS * 100);
+                var body1pos = body1.position;
+                var body2pos = body2.position;
 
-                var body1To2 = tempVec.subVectors(body2.position, body1.position);
-                body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
-                var sqrDist = body1To2.lengthSq();
+                var body1force = body1.force;
+                var body2force = body2.force;
 
-                var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
+                var massSum = body1.mass + body2.mass;
+                var massProduct = body1.mass * body2.mass;
+
+                var isBlackHoleInteraction = massSum > (typicalStarMass * 100);
+
+                // Calculate body1To2 and put into proper scale
+                body1To2X = (body2pos.x - body1pos.x)*universeScaleRecipr;
+                body1To2Y = (body2pos.y - body1pos.y)*universeScaleRecipr;
+                body1To2Z = (body2pos.z - body1pos.z)*universeScaleRecipr;
+
+                var sqrDist = body1To2X*body1To2X + body1To2Y*body1To2Y + body1To2Z*body1To2Z;
+                var dist = Math.sqrt(sqrDist);
+
+                var force = gravitationalConstant * ((massProduct) / (sqrDist + gravityEpsilon*gravityEpsilon));
                 // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
-                var forceOnBody = body1To2.setLength(force);
+                var setLengthMultiplier = force / dist;
 
-                var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(100 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2);
+                // Add force based on force amount and direction between bodies
+                body1force.x += body1To2X * setLengthMultiplier;
+                body1force.y += body1To2Y * setLengthMultiplier;
+                body1force.z += body1To2Z * setLengthMultiplier;
 
-                if(!isBlackHoleInteraction && sqrDist < GAS_INTERACTION_DISTANCE_SQRD) {
-                    // TODO: Use gas constants instead
-                    var gasForce = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
-                    tempVec2.copy(body1.velocity);
-                    var relativeVel = tempVec2.sub(body2.velocity);
-                    var gasForceOnBody = relativeVel.multiplyScalar(gasForce*Math.pow(10, 9));
+                if(attractingIsAttracted); {
+                    body2force.x -= body1To2X * setLengthMultiplier;
+                    body2force.y -= body1To2Y * setLengthMultiplier;
+                    body2force.z -= body1To2Z * setLengthMultiplier;
+                }
+                var isClose = sqrDist < FAR_THRESHOLD_SQR || isBlackHoleInteraction;
 
-                    body1.force.sub(gasForceOnBody)
+                if(!isBlackHoleInteraction) {
+                    // Handle some sort of gas interaction
+                    var gasForce = gravitationalConstant * (massProduct / (sqrDist + gravityEpsilonSqrd));
+                    gasForce *= Math.pow(10, 9);
+                    var body1vel = body1.velocity;
+                    var body2vel = body2.velocity;
+
+                    relativeVelX = body1vel.x - body2vel.x;
+                    relativeVelY = body1vel.y - body2vel.y;
+                    relativeVelZ = body1vel.z - body2vel.z;
+
+                    body1force.x -= relativeVelX * gasForce;
+                    body1force.y -= relativeVelY * gasForce;
+                    body1force.z -= relativeVelZ * gasForce;
+
                     if(attractingIsAttracted); {
-                        body2.force.add(gasForceOnBody);
+                        body2force.x += relativeVelX * gasForce;
+                        body2force.y += relativeVelY * gasForce;
+                        body2force.z += relativeVelZ * gasForce;
                     }
                 }
-                body1.force.add(forceOnBody);
-                if(attractingIsAttracted); {
-                    body2.force.sub(forceOnBody);
-                }
-                var isClose = sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100;
 
                 if(!isClose) {
                     // Remove this interaction
-                    delete closeInteractions[i][innerKey];
+                    closeInteractions[i][innerI] = -1;
                     closeInteractionCount--;
                 }
             }
@@ -220,14 +254,40 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
             // TODO: Details with attracting/attracted storage here...
             for(var attractingIndex=0, len=attractingCelestials.length; attractingIndex<len; attractingIndex++) {
                 if(attractingIndex !== currentFarAttractedIndex || !attractingIsAttracted) {
-                    var isCloseInteraction = closeInteractions[currentFarAttractedIndex][attractingIndex] === true;
+
+                    // TODO: Make this code not insane
+
+
+                    var isCloseInteraction = false;
+
+                    for(var closeInteractionIndex=0, closeInteractionLen=closeInteractions[currentFarAttractedIndex].length; closeInteractionIndex<closeInteractionLen; closeInteractionIndex++) {
+                        if(closeInteractions[currentFarAttractedIndex][closeInteractionIndex] === attractingIndex) {
+                          isCloseInteraction = true;
+                          break;
+                        }
+                    }
                     if(!isCloseInteraction && attractingIsAttracted) {
-                        isCloseInteraction = closeInteractions[attractingIndex][currentFarAttractedIndex] === true;
+                        // Need to make extra check when attracting is attracted - close interaction might be stored in other direction
+                        // TODO: Maybe double-direction store close interactions for performance?
+                        for(var closeInteractionIndex=0, closeInteractionLen=closeInteractions[currentFarAttractedIndex].length; closeInteractionIndex<closeInteractionLen; closeInteractionIndex++) {
+                            if(closeInteractions[currentFarAttractedIndex][closeInteractionIndex] === attractingIndex) {
+                              isCloseInteraction = true;
+                              break;
+                            }
+                        }
                     }
                     if(!isCloseInteraction) {
                         if(addGravityToVector(attractedBody, attractingCelestials[attractingIndex], farForce)) {
-                            // Should handle this as a close interaction
-                            closeInteractions[currentFarAttractedIndex][attractingIndex] = true;
+                            // Should turn this into a close interaction
+                            for(var closeInteractionIndex=0, closeInteractionLen=closeInteractions[currentFarAttractedIndex].length; closeInteractionIndex<closeInteractionLen; closeInteractionIndex++) {
+                                if(closeInteractions[currentFarAttractedIndex][closeInteractionIndex] === -1) {
+                                    closeInteractions[currentFarAttractedIndex][closeInteractionIndex] = attractingIndex;
+                                    break;
+                                }
+                            }
+                            if(closeInteractionIndex === closeInteractionLen) {
+                                closeInteractions[currentFarAttractedIndex].push(attractingIndex);
+                            }
                             closeInteractionCount++;
                         }
                     }

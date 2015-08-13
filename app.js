@@ -26,7 +26,7 @@ window.fullofstars = window.fullofstars || {};
             // add it to the geometry
             particles.vertices.push(particle);
             var massFactor = bodies[p].mass / fullofstars.TYPICAL_STAR_MASS;
-            var color = new THREE.Color(1, 0.7 + 0.3 * massFactor, 0.7 + 0.3 * massFactor);
+            var color = new THREE.Color(0.5+0.3 * massFactor, 0.6+0.3 * massFactor, 0.7 + 0.3 * massFactor);
             if(bodies[p].mass > 0.9999*fullofstars.TYPICAL_STAR_MASS * 100) { color = new THREE.Color(0,0,0); }
             var hsl = color.getHSL();
             color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
@@ -97,8 +97,8 @@ window.fullofstars = window.fullofstars || {};
 
         var materials = fullofstars.createAllMaterials();
 
-        var BODYCOUNT = 200;
-        var BODYCOUNT_VFX = 15000;
+        var BODYCOUNT = 400;
+        var BODYCOUNT_VFX = 30000;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
