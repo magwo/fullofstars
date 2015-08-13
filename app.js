@@ -155,15 +155,17 @@ window.fullofstars = window.fullofstars || {};
             accumulatedFarDt += dt;
 
             // This step updates positions
+            fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, true);
             for(var i=0, len=bodies.length; i<len; i++) {
-                bodies[i].velocityVerletUpdate(dt, true);
+              // TODO: Consider inlining this into verlet update function
                 mesh.geometry.vertices[i].copy(bodies[i].position);
             }
-            // This step updates positions
+            fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, true);
             for(var i=0, len=bodiesVfx.length; i<len; i++) {
-                bodiesVfx[i].velocityVerletUpdate(dt, true);
+                // TODO: Consider inlining this into verlet update function
                 meshVfx.geometry.vertices[i].copy(bodiesVfx[i].position);
             }
+
             // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
             if(accumulatedFarDt >= TIME_SCALE / 60.0) {
                 gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
@@ -171,16 +173,9 @@ window.fullofstars = window.fullofstars || {};
                 accumulatedFarDt -= TIME_SCALE/60;
             }
 
-            for(var i=0, len=bodies.length; i<len; i++) {
-                var body = bodies[i];
-                body.velocityVerletUpdate(dt, false);
-                body.force.copy(body.prevForce);
-            }
-            for(var i=0, len=bodiesVfx.length; i<len; i++) {
-                var body = bodiesVfx[i];
-                body.velocityVerletUpdate(dt, false);
-                body.force.copy(body.prevForce);
-            }
+            fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, false);
+            fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, false);
+
             mesh.geometry.verticesNeedUpdate = true;
             meshVfx.geometry.verticesNeedUpdate = true;
             lastT = t;
