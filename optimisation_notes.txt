@@ -6,11 +6,13 @@ var BODYCOUNT = 200;
 var BODYCOUNT_VFX = 15000;
 
 
-Pre-optimized values:
+___Pre-optimized values___
 Verlet update: 7+7 ms
 Handle close interactions: 32-50 ms
+Handle far interactions: 6-7 ms
 
 
-Post-optimized values:
+___Post-optimized values___
 Verlet update: 2-3 (acc) + 1-5 (why?) (pos) ms
 Handle close interactions: 15-24 ms
+Handle far interactions: 2-3 ms
