@@ -97,8 +97,8 @@ window.fullofstars = window.fullofstars || {};
 
         var materials = fullofstars.createAllMaterials();
 
-        var BODYCOUNT = 800;
-        var BODYCOUNT_VFX = 15000;
+        var BODYCOUNT = 500;
+        var BODYCOUNT_VFX = 20000;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
