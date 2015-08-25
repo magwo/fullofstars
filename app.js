@@ -4,12 +4,14 @@ window.fullofstars = window.fullofstars || {};
 (function() {
 
 
-    fullofstars.updateViewport = function(window, renderer, camera) {
+    fullofstars.updateViewport = function(window, renderer, camera, skybox) {
         var w = window.innerWidth;
         var h = window.innerHeight;
         renderer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
+        skybox.camera.aspect = w / h;
+        skybox.camera.updateProjectionMatrix();
     };
 
 
@@ -37,27 +39,7 @@ window.fullofstars = window.fullofstars || {};
     }
 
 
-
-    $(function() {
-        var W = 1200;
-        var H = 800;
-
-        var renderer = new THREE.WebGLRenderer();
-        renderer.setSize( W, H );
-        renderer.setClearColor(0x000000);
-        document.body.appendChild(renderer.domElement);
-        var scene = new THREE.Scene();
-
-        var camera = new THREE.PerspectiveCamera(
-            45,         // Field of view
-            W / H,  // Aspect ratio
-            .0001 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE,         // Near
-            10 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE       // Far
-        );
-
-        fullofstars.updateViewport(window, renderer, camera);
-        window.addEventListener('resize', function() {fullofstars.updateViewport(window, renderer, camera)});
-
+    function createSkyboxStuff() {
         // Make a skybox
         var urls = [
             'images/BlueNebular_left.jpg',
@@ -71,7 +53,7 @@ window.fullofstars = window.fullofstars || {};
         ];
 
         var skyboxScene = new THREE.Scene();
-        var skyboxCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000 );
+        var skyboxCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 100, 60000 );
 
         var cubemap = THREE.ImageUtils.loadTextureCube(urls); // load textures
         cubemap.format = THREE.RGBFormat;
@@ -90,10 +72,37 @@ window.fullofstars = window.fullofstars || {};
 
         // create skybox mesh
         var skybox = new THREE.Mesh(
-          new THREE.BoxGeometry(500,500,500),
+          new THREE.BoxGeometry(50000,50000,50000),
           skyBoxMaterial
         );
         skyboxScene.add(skybox);
+
+        return { scene: skyboxScene, camera: skyboxCamera };
+    }
+
+
+
+    $(function() {
+        var W = 1200;
+        var H = 800;
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize( W, H );
+        renderer.setClearColor(0x000000);
+        document.body.appendChild(renderer.domElement);
+        var scene = new THREE.Scene();
+
+        var camera = new THREE.PerspectiveCamera(
+            45,         // Field of view
+            W / H,  // Aspect ratio
+            .0001 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE,         // Near
+            10 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE       // Far
+        );
+
+        var skybox = createSkyboxStuff();
+        fullofstars.updateViewport(window, renderer, camera, skybox);
+        window.addEventListener('resize', function() {fullofstars.updateViewport(window, renderer, camera, skybox)});
+
 
         var materials = fullofstars.createAllMaterials();
 
@@ -108,7 +117,9 @@ window.fullofstars = window.fullofstars || {};
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
+        mesh.frustumCulled = false;
         var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.dust );
+        meshVfx.frustumCulled = false;
         scene.add( mesh );
         scene.add( meshVfx );
 
@@ -121,9 +132,9 @@ window.fullofstars = window.fullofstars || {};
         function render() {
             renderer.autoclear = false;
             renderer.autoClearColor = false;
-            skyboxCamera.quaternion.copy(camera.quaternion);
-            renderer.render( skyboxScene, skyboxCamera );
-            renderer.render( scene, camera );
+            skybox.camera.quaternion.copy(camera.quaternion);
+            renderer.render(skybox.scene, skybox.camera);
+            renderer.render(scene, camera);
         }
 
         var lastT = 0.0;
