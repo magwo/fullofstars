@@ -20,22 +20,49 @@ window.fullofstars = window.fullofstars || {};
         // create the particle variables
         var particleCount = bodies.length;
         var particles = new THREE.Geometry();
-        var colors = [];
+        var colors = new Array(particleCount);
 
         // now create the individual particles
         for (var p = 0; p < particleCount; p++) {
             particle = bodies[p].position;
             // add it to the geometry
             particles.vertices.push(particle);
-            var massFactor = bodies[p].mass / fullofstars.TYPICAL_STAR_MASS;
-            var color = new THREE.Color(0.5+0.3 * massFactor, 0.6+0.3 * massFactor, 0.7 + 0.3 * massFactor);
-            if(bodies[p].mass > 0.9999*fullofstars.TYPICAL_STAR_MASS * 100) { color = new THREE.Color(0,0,0); }
-            var hsl = color.getHSL();
-            color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
-            colors[p] = color;
+            colors[p] = new THREE.Color(1,1,1);
         }
         particles.colors = colors;
         return particles;
+    }
+
+    function colorParticles(bodies, pointCloud, colorSelectingFunc) {
+        var particleCount = bodies.length;
+        var particles = new THREE.Geometry();
+
+        for (var p = 0; p < particleCount; p++) {
+            particle = bodies[p].position;
+            var massFactor = bodies[p].mass / fullofstars.TYPICAL_STAR_MASS;
+
+            colorSelectingFunc(bodies[p], pointCloud.geometry.colors[p]);
+        }
+        pointCloud.geometry.colorsNeedUpdate = true;
+    }
+
+    function colorStar(body, existingColor) {
+        if(body.mass > 0.9999*fullofstars.TYPICAL_STAR_MASS * 100) {
+            // Black hole color
+            color = new THREE.Color(0,0,0); }
+        else {
+            // Normal color
+            var massFactor = body.mass / fullofstars.TYPICAL_STAR_MASS;
+            existingColor.setRGB(0.5+0.3 * massFactor, 0.6+0.3 * massFactor, 0.7 + 0.3 * massFactor);
+        }
+        //var hsl = color.getHSL();
+        //color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
+
+    }
+
+    function colorGasCloud(body, existingColor) {
+        var massFactor = body.mass / fullofstars.TYPICAL_STAR_MASS;
+        existingColor.setHSL(0.1 + 0.1*Math.cos(body.position.x*0.002), 1, 0.4 + 0.6*massFactor);
     }
 
 
@@ -89,6 +116,7 @@ window.fullofstars = window.fullofstars || {};
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize( W, H );
         renderer.setClearColor(0x000000);
+        renderer.sortObjects = false;
         document.body.appendChild(renderer.domElement);
         var scene = new THREE.Scene();
 
@@ -108,7 +136,7 @@ window.fullofstars = window.fullofstars || {};
 
         var BODYCOUNT = 500;
         var BODYCOUNT_VFX = 20000;
-        var BODYCOUNT_GAS = 500;
+        var BODYCOUNT_GAS = 300;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
@@ -125,6 +153,11 @@ window.fullofstars = window.fullofstars || {};
         var meshGas = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesGas, 1.0), materials.gasCloud );
         meshGas.frustumCulled = false;
 
+        colorParticles(bodies, mesh, colorStar);
+        colorParticles(bodiesVfx, meshVfx, colorStar);
+        colorParticles(bodiesGas, meshGas, colorGasCloud);
+
+        // Add desired order of rendering
         scene.add(meshGas);
         scene.add(mesh);
         scene.add(meshVfx);
@@ -181,7 +214,7 @@ window.fullofstars = window.fullofstars || {};
             for(var i=0, len=bodies.length; i<len; i++) {
                 mesh.geometry.vertices[i].copy(bodies[i].position);
             }
-            
+
             for(var i=0, len=bodiesVfx.length; i<len; i++) {
                 meshVfx.geometry.vertices[i].copy(bodiesVfx[i].position);
             }

@@ -21,17 +21,13 @@ fullofstars.createAllMaterials = function() {
 	    	});
     }
 
-	var brightTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,1]);
-	var dustTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,1]);
-	var debrisTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,5]);
-	var vortexTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [0,1]);
+	var starLargeTexture = THREE.ImageUtils.loadTexture("images/star_large.png");
+	var starSmallTexture = THREE.ImageUtils.loadTexture("images/star_small.png");
 	var gasCloudTexture = THREE.ImageUtils.loadTexture("images/cloud_01.png");
 
 	return {
-		bright: createParticleMaterial(brightTexture, 100, 0xffffff, THREE.AdditiveBlending, 1.0),
-		brightSmall: createParticleMaterial(brightTexture, 50, 0xffffff, THREE.AdditiveBlending, 1.0),
-		dust: createParticleMaterial(dustTexture, 100, 0xaaaaaa, THREE.AdditiveBlending, 1.0),
-		debrisLarge: createParticleMaterial(debrisTexture, 400, 0x000000, THREE.AdditiveBlending, 1.0),
-		gasCloud: createParticleMaterial(gasCloudTexture, 900, 0xffccaa, THREE.AdditiveBlending, 0.17)
+		bright: createParticleMaterial(starLargeTexture, 140, 0xffffff, THREE.AdditiveBlending, 1.0),
+		brightSmall: createParticleMaterial(starSmallTexture, 80, 0xffffff, THREE.AdditiveBlending, 1.0),
+		gasCloud: createParticleMaterial(gasCloudTexture, 1000, 0xffdddd, THREE.NormalBlending, 0.2)
 	}
 };
