@@ -8,12 +8,13 @@ fullofstars.createAllMaterials = function() {
         return texture;
     }
 
-    function createParticleMaterial(texture, size, color) {
+    function createParticleMaterial(texture, size, color, blending, opacity) {
     	return new THREE.PointCloudMaterial({
     		color: color,
+    		opacity: opacity,
 		    size: size,
 		    map: texture,
-		    blending: THREE.AdditiveBlending,
+		    blending: blending,
 		    depthTest: false,
 		    transparent: true,
 		    vertexColors: THREE.VertexColors
@@ -24,11 +25,13 @@ fullofstars.createAllMaterials = function() {
 	var dustTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,1]);
 	var debrisTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [1,5]);
 	var vortexTexture = createParticleTexture(THREE.ImageUtils.loadTexture("images/particles.png"), [7,6], [0,1]);
+	var gasCloudTexture = THREE.ImageUtils.loadTexture("images/cloud_01.png");
 
 	return {
-		bright: createParticleMaterial(brightTexture, 220, 0xffffff),
-		brightSmall: createParticleMaterial(brightTexture, 90, 0xffffff),
-		dust: createParticleMaterial(dustTexture, 100, 0xaaaaaa),
-		debrisLarge: createParticleMaterial(debrisTexture, 400, 0x000000)
+		bright: createParticleMaterial(brightTexture, 100, 0xffffff, THREE.AdditiveBlending, 1.0),
+		brightSmall: createParticleMaterial(brightTexture, 50, 0xffffff, THREE.AdditiveBlending, 1.0),
+		dust: createParticleMaterial(dustTexture, 100, 0xaaaaaa, THREE.AdditiveBlending, 1.0),
+		debrisLarge: createParticleMaterial(debrisTexture, 400, 0x000000, THREE.AdditiveBlending, 1.0),
+		gasCloud: createParticleMaterial(gasCloudTexture, 900, 0xffccaa, THREE.AdditiveBlending, 0.17)
 	}
 };

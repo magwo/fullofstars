@@ -11,7 +11,7 @@ fullofstars.LIGHT_SPEED = 299792458;
 fullofstars.LIGHT_SPEED_SCALED = fullofstars.LIGHT_SPEED * fullofstars.UNIVERSE_SCALE;
 fullofstars.LIGHT_SPEED_SCALED_SQRD = fullofstars.LIGHT_SPEED_SCALED * fullofstars.LIGHT_SPEED_SCALED;
 fullofstars.GRAVITATIONAL_CONSTANT = 6.673e-11;
-fullofstars.GRAVITY_EPSILON = 250000000000000;
+fullofstars.GRAVITY_EPSILON = Math.pow(10, 18);
 fullofstars.TYPICAL_STAR_MASS = 2 * Math.pow(10, 30);
 
 // Fake frame requester helper used for testing and fitness simulations

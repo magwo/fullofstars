@@ -108,20 +108,26 @@ window.fullofstars = window.fullofstars || {};
 
         var BODYCOUNT = 500;
         var BODYCOUNT_VFX = 20000;
+        var BODYCOUNT_GAS = 500;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
 
         var bodies = fullofstars.createGravitySystem(BODYCOUNT, true);
         var bodiesVfx = fullofstars.createGravitySystem(BODYCOUNT_VFX, false);
+        var bodiesGas = fullofstars.createGravitySystem(BODYCOUNT_GAS, false);
 
 
         var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
         mesh.frustumCulled = false;
-        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.dust );
+        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.brightSmall );
         meshVfx.frustumCulled = false;
-        scene.add( mesh );
-        scene.add( meshVfx );
+        var meshGas = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesGas, 1.0), materials.gasCloud );
+        meshGas.frustumCulled = false;
+
+        scene.add(meshGas);
+        scene.add(mesh);
+        scene.add(meshVfx);
 
         var TIME_SCALE = Math.pow(10, 9);
         var timeScale = TIME_SCALE;
@@ -142,8 +148,10 @@ window.fullofstars = window.fullofstars || {};
         var accumulatedRealDtTotal = 0.0;
         var gravityApplicator = fullofstars.createTwoTierSmartGravityApplicator(bodies, bodies);
         var gravityApplicatorVfx = fullofstars.createTwoTierSmartGravityApplicator(bodiesVfx, bodies);
+        var gravityApplicatorGas = fullofstars.createTwoTierSmartGravityApplicator(bodiesGas, bodies);
         gravityApplicator.updateForces(bodies.length);
         gravityApplicatorVfx.updateForces(bodiesVfx.length);
+        gravityApplicatorGas.updateForces(bodiesGas.length);
 
         function update(t) {
             var dt = (t - lastT) * 0.001 * timeScale;
@@ -167,28 +175,36 @@ window.fullofstars = window.fullofstars || {};
 
             // This step updates positions
             fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, true);
+            fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, true);
+            fullofstars.PointMassBody.velocityVerletUpdate(bodiesGas, dt, true);
+
             for(var i=0, len=bodies.length; i<len; i++) {
-              // TODO: Consider inlining this into verlet update function
                 mesh.geometry.vertices[i].copy(bodies[i].position);
             }
-            fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, true);
+            
             for(var i=0, len=bodiesVfx.length; i<len; i++) {
-                // TODO: Consider inlining this into verlet update function
                 meshVfx.geometry.vertices[i].copy(bodiesVfx[i].position);
+            }
+
+            for(var i=0, len=bodiesGas.length; i<len; i++) {
+                meshGas.geometry.vertices[i].copy(bodiesGas[i].position);
             }
 
             // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
             if(accumulatedFarDt >= TIME_SCALE / 60.0) {
                 gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
                 gravityApplicatorVfx.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME*20);
+                gravityApplicatorGas.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
                 accumulatedFarDt -= TIME_SCALE/60;
             }
 
             fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, false);
             fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, false);
+            fullofstars.PointMassBody.velocityVerletUpdate(bodiesGas, dt, false);
 
             mesh.geometry.verticesNeedUpdate = true;
             meshVfx.geometry.verticesNeedUpdate = true;
+            meshGas.geometry.verticesNeedUpdate = true;
             lastT = t;
         };
 
