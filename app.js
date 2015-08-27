@@ -58,19 +58,16 @@ window.fullofstars = window.fullofstars || {};
                 existingColor.setRGB(0.9+0.1*Math.random(), 0.4 + 0.4*Math.random(), 0.4 + 0.4 * Math.random());
             }
             else if(massFactor < 0.004) {
-                existingColor.setRGB(0.4+0.1*Math.random(), 0.4 + 0.3*Math.random(), 0.9 + 0.1 * Math.random());
+                existingColor.setRGB(0.5+0.1*Math.random(), 0.5 + 0.2*Math.random(), 0.9 + 0.1 * Math.random());
             } else {
-                existingColor.setRGB(0.5+0.3 * massFactor, 0.6+0.3 * massFactor, 0.7 + 0.3 * massFactor);
+                existingColor.setRGB(0.6+0.4 * massFactor, 0.6+0.4 * massFactor, 0.5 + 0.3 * massFactor);
             }
         }
-        //var hsl = color.getHSL();
-        //color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
-
     }
 
     function colorGasCloud(body, existingColor) {
         var massFactor = body.mass / fullofstars.TYPICAL_STAR_MASS;
-        existingColor.setHSL(0.6 + 0.24*Math.cos(body.position.x*0.002), 0.4 + 0.6*Math.random(), 0.5 + 0.5*Math.random());
+        existingColor.setHSL(0.65 + 0.2*Math.cos(body.position.x*0.002), 0.4 + 0.6*Math.random(), 0.5 + 0.5*Math.random());
     }
 
 
