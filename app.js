@@ -189,12 +189,11 @@ window.fullofstars = window.fullofstars || {};
         gravityApplicatorVfx.updateForces(bodiesVfx.length);
         gravityApplicatorGas.updateForces(bodiesGas.length);
 
-
         THREE.DefaultLoadingManager.onProgress = function (item, loaded, total) {
             $("#loading_indicator .loading_bar").width(100*loaded/total + "%");
-
             if(loaded === total) {
-                $("#loading_indicator").hide();
+                $("#loading_indicator").delay(200).fadeOut(400);
+                $("#loading_cover").delay(600).fadeOut(1000);
                 startGalaxySimulation();
             }
         };
