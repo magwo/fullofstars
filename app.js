@@ -190,6 +190,13 @@ window.fullofstars = window.fullofstars || {};
         gravityApplicatorGas.updateForces(bodiesGas.length);
 
         THREE.DefaultLoadingManager.onProgress = function (item, loaded, total) {
+            var loadingMessages = [
+                "Inventing universe...", "Creating medium-sized bang...", "Spawning gas...", "Tweaking physical constants...", "Venturing to the stars...", "Awaiting glorious dawn..."
+            ];
+            var textIndex = Math.min(Math.floor((loaded / total) * loadingMessages.length), loadingMessages.length-1);
+            console.log(textIndex);
+            $("#loading_indicator .loading_text").text(loadingMessages[textIndex]);
+            $("#loading_indicator .loading_text").fadeOut(100).fadeIn(100);
             $("#loading_indicator .loading_bar").width(100*loaded/total + "%");
             if(loaded === total) {
                 $("#loading_indicator").delay(200).fadeOut(400);
