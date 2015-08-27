@@ -189,17 +189,19 @@ window.fullofstars = window.fullofstars || {};
         gravityApplicatorVfx.updateForces(bodiesVfx.length);
         gravityApplicatorGas.updateForces(bodiesGas.length);
 
+        var started = false;
         THREE.DefaultLoadingManager.onProgress = function (item, loaded, total) {
             var loadingMessages = [
                 "Inventing universe...", "Making apple pie...", "Venturing to the stars...", "Awaiting glorious dawn..."
             ];
             var textIndex = Math.min(Math.floor((loaded / total) * loadingMessages.length), loadingMessages.length-1);
-            console.log(textIndex);
             $("#loading_indicator .loading_text").text(loadingMessages[textIndex]);
             $("#loading_indicator .loading_bar").width(100*loaded/total + "%");
-            if(loaded === total) {
+            if(loaded === total && !started) {
+                started = true;
                 $("#loading_indicator").delay(200).fadeOut(400);
                 $("#loading_cover").delay(600).fadeOut(1000);
+                $("#footnote").delay(5000).fadeOut(2000);
                 startGalaxySimulation();
             }
         };
