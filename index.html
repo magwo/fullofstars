@@ -5,8 +5,25 @@
     <meta charset="UTF-8">
 
     <style>
-    	body, html { padding: 0; margin: 0; background-color: black; }
+    	body, html { padding: 0; margin: 0; background-color: black; font-family: "Helvetica" }
     	body > canvas { position: absolute; top: 0; left: 0; padding: 0; margin: 0; background-color: black; }
+        #loading_indicator {
+            position: absolute; width: 200px; height: 40px; z-index: 10; position: absolute; top: 30%; margin-left: auto; margin-right: auto; left: 0; right: 0;
+            border-radius: 10px;
+            background-color: #555;
+        }
+        #loading_indicator .loading_bar {
+            position: absolute; width: 0px; height: 40px; z-index: 11; top: 0; left: 0;
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        #loading_indicator .loading_text {
+            position: absolute; width: 200px; height: 40px; z-index: 12; top: 0; left: 0;
+            color: #fff;
+            text-align: center;
+            line-height: 40px;
+            text-shadow: 0 0 5px #000;
+        }
     </style>
 
     <script type="text/javascript" src="libs/jquery-2.1.1.min.js"></script>
@@ -20,5 +37,6 @@
 
 </head>
 <body>
+    <div id="loading_indicator"><span class="loading_bar"></span><span class="loading_text">Loading assets...</span></div>
 </body>
 </html>

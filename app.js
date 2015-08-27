@@ -113,13 +113,11 @@ window.fullofstars = window.fullofstars || {};
     }
 
 
-
     $(function() {
-        var W = 1200;
-        var H = 800;
+
 
         var renderer = new THREE.WebGLRenderer({antialias: false});
-        renderer.setSize( W, H );
+        renderer.setSize( 1200, 800 );
         renderer.setClearColor(0x000000);
         renderer.sortObjects = false;
         document.body.appendChild(renderer.domElement);
@@ -127,7 +125,7 @@ window.fullofstars = window.fullofstars || {};
 
         var camera = new THREE.PerspectiveCamera(
             45,         // Field of view
-            W / H,  // Aspect ratio
+            1200 / 800,  // Aspect ratio
             .0001 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE,         // Near
             10 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE       // Far
         );
@@ -191,67 +189,80 @@ window.fullofstars = window.fullofstars || {};
         gravityApplicatorVfx.updateForces(bodiesVfx.length);
         gravityApplicatorGas.updateForces(bodiesGas.length);
 
-        function update(t) {
-            var dt = (t - lastT) * 0.001 * timeScale;
-            dt = Math.min(1 / 60.0, dt); // Clamp
-            accumulatedRealDtTotal += dt;
 
-            var positionScale = 1.5 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
-            var cameraRotationSpeed = 0.3;
-            camera.position.copy(bodies[0].position);
-            camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
+        THREE.DefaultLoadingManager.onProgress = function (item, loaded, total) {
+            $("#loading_indicator .loading_bar").width(100*loaded/total + "%");
 
-            var cameraLookatRotationSpeed = 0.8;
-            var cameraLookAtScale = 0.2 * positionScale;
-            var cameraLookAtPos = new THREE.Vector3().copy(bodies[0].position);
-            cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
-            camera.lookAt(cameraLookAtPos);
-
-
-            dt *= TIME_SCALE;
-            accumulatedFarDt += dt;
-
-            // This step updates positions
-            fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, true);
-            fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, true);
-            fullofstars.PointMassBody.velocityVerletUpdate(bodiesGas, dt, true);
-
-            for(var i=0, len=bodies.length; i<len; i++) {
-                mesh.geometry.vertices[i].copy(bodies[i].position);
+            if(loaded === total) {
+                $("#loading_indicator").hide();
+                startGalaxySimulation();
             }
-
-            for(var i=0, len=bodiesVfx.length; i<len; i++) {
-                meshVfx.geometry.vertices[i].copy(bodiesVfx[i].position);
-            }
-
-            for(var i=0, len=bodiesGas.length; i<len; i++) {
-                meshGas.geometry.vertices[i].copy(bodiesGas[i].position);
-            }
-
-            // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
-            if(accumulatedFarDt >= TIME_SCALE / 60.0) {
-                gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
-                gravityApplicatorVfx.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME*20);
-                gravityApplicatorGas.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
-                accumulatedFarDt -= TIME_SCALE/60;
-            }
-
-            fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, false);
-            fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, false);
-            fullofstars.PointMassBody.velocityVerletUpdate(bodiesGas, dt, false);
-
-            mesh.geometry.verticesNeedUpdate = true;
-            meshVfx.geometry.verticesNeedUpdate = true;
-            meshGas.geometry.verticesNeedUpdate = true;
-            lastT = t;
         };
 
-        function handleAnimationFrame(dt) {
-            update(dt);
-            render();
+
+        function startGalaxySimulation() {
+            function update(t) {
+                var dt = (t - lastT) * 0.001 * timeScale;
+                dt = Math.min(1 / 60.0, dt); // Clamp
+                accumulatedRealDtTotal += dt;
+
+                var positionScale = 1.5 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
+                var cameraRotationSpeed = 0.3;
+                camera.position.copy(bodies[0].position);
+                camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
+
+                var cameraLookatRotationSpeed = 0.8;
+                var cameraLookAtScale = 0.2 * positionScale;
+                var cameraLookAtPos = new THREE.Vector3().copy(bodies[0].position);
+                cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
+                camera.lookAt(cameraLookAtPos);
+
+
+                dt *= TIME_SCALE;
+                accumulatedFarDt += dt;
+
+                // This step updates positions
+                fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, true);
+                fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, true);
+                fullofstars.PointMassBody.velocityVerletUpdate(bodiesGas, dt, true);
+
+                for(var i=0, len=bodies.length; i<len; i++) {
+                    mesh.geometry.vertices[i].copy(bodies[i].position);
+                }
+
+                for(var i=0, len=bodiesVfx.length; i<len; i++) {
+                    meshVfx.geometry.vertices[i].copy(bodiesVfx[i].position);
+                }
+
+                for(var i=0, len=bodiesGas.length; i<len; i++) {
+                    meshGas.geometry.vertices[i].copy(bodiesGas[i].position);
+                }
+
+                // This step updates velocities, so we can reuse forces for next position update (they will be the same because positios did not change)
+                if(accumulatedFarDt >= TIME_SCALE / 60.0) {
+                    gravityApplicator.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
+                    gravityApplicatorVfx.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME*20);
+                    gravityApplicatorGas.updateForces(FAR_BODYCOUNT_PER_60FPS_FRAME);
+                    accumulatedFarDt -= TIME_SCALE/60;
+                }
+
+                fullofstars.PointMassBody.velocityVerletUpdate(bodies, dt, false);
+                fullofstars.PointMassBody.velocityVerletUpdate(bodiesVfx, dt, false);
+                fullofstars.PointMassBody.velocityVerletUpdate(bodiesGas, dt, false);
+
+                mesh.geometry.verticesNeedUpdate = true;
+                meshVfx.geometry.verticesNeedUpdate = true;
+                meshGas.geometry.verticesNeedUpdate = true;
+                lastT = t;
+            };
+
+            function handleAnimationFrame(dt) {
+                update(dt);
+                render();
+                window.requestAnimationFrame(handleAnimationFrame);
+            };
             window.requestAnimationFrame(handleAnimationFrame);
-        };
-        window.requestAnimationFrame(handleAnimationFrame);
 
+        };
     });
 })();
