@@ -121,7 +121,7 @@ window.fullofstars = window.fullofstars || {};
         var W = 1200;
         var H = 800;
 
-        var renderer = new THREE.WebGLRenderer();
+        var renderer = new THREE.WebGLRenderer({antialias: false});
         renderer.setSize( W, H );
         renderer.setClearColor(0x000000);
         renderer.sortObjects = false;
@@ -144,7 +144,7 @@ window.fullofstars = window.fullofstars || {};
 
         var BODYCOUNT = 500;
         var BODYCOUNT_VFX = 20000;
-        var BODYCOUNT_GAS = 400;
+        var BODYCOUNT_GAS = 300;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);

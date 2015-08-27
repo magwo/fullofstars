@@ -27,7 +27,7 @@ fullofstars.createAllMaterials = function() {
 
 	return {
 		bright: createParticleMaterial(starLargeTexture, 140, 0xffffff, THREE.AdditiveBlending, 1.0),
-		brightSmall: createParticleMaterial(starSmallTexture, 80, 0xffffff, THREE.AdditiveBlending, 1.0),
-		gasCloud: createParticleMaterial(gasCloudTexture, 1000, 0xffdddd, THREE.NormalBlending, 0.2)
+		brightSmall: createParticleMaterial(starSmallTexture, 60, 0xffffff, THREE.AdditiveBlending, 1.0),
+		gasCloud: createParticleMaterial(gasCloudTexture, 1000, 0xffffff, THREE.NormalBlending, 0.28)
 	}
 };
