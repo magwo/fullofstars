@@ -16,7 +16,7 @@ window.fullofstars = window.fullofstars || {};
 
 
 
-    function createCloudGeometryFromBodies(bodies, saturationFactor) {
+    function createCloudGeometryFromBodies(bodies) {
         // create the particle variables
         var particleCount = bodies.length;
         var particles = new THREE.Geometry();
@@ -53,7 +53,15 @@ window.fullofstars = window.fullofstars || {};
         else {
             // Normal color
             var massFactor = body.mass / fullofstars.TYPICAL_STAR_MASS;
-            existingColor.setRGB(0.5+0.3 * massFactor, 0.6+0.3 * massFactor, 0.7 + 0.3 * massFactor);
+
+            if(massFactor < 0.002) {
+                existingColor.setRGB(0.9+0.1*Math.random(), 0.4 + 0.4*Math.random(), 0.4 + 0.4 * Math.random());
+            }
+            else if(massFactor < 0.004) {
+                existingColor.setRGB(0.4+0.1*Math.random(), 0.4 + 0.3*Math.random(), 0.9 + 0.1 * Math.random());
+            } else {
+                existingColor.setRGB(0.5+0.3 * massFactor, 0.6+0.3 * massFactor, 0.7 + 0.3 * massFactor);
+            }
         }
         //var hsl = color.getHSL();
         //color.setHSL(hsl.h, hsl.s*saturationFactor, hsl.l);
@@ -62,7 +70,7 @@ window.fullofstars = window.fullofstars || {};
 
     function colorGasCloud(body, existingColor) {
         var massFactor = body.mass / fullofstars.TYPICAL_STAR_MASS;
-        existingColor.setHSL(0.1 + 0.1*Math.cos(body.position.x*0.002), 1, 0.4 + 0.6*massFactor);
+        existingColor.setHSL(0.6 + 0.24*Math.cos(body.position.x*0.002), 0.4 + 0.6*Math.random(), 0.5 + 0.5*Math.random());
     }
 
 
@@ -136,21 +144,21 @@ window.fullofstars = window.fullofstars || {};
 
         var BODYCOUNT = 500;
         var BODYCOUNT_VFX = 20000;
-        var BODYCOUNT_GAS = 300;
+        var BODYCOUNT_GAS = 400;
         var FAR_UPDATE_PERIOD = 2.0; // How long between updates of far interactions
         var FAR_BODYCOUNT_PER_60FPS_FRAME = Math.max(1, BODYCOUNT / (60*FAR_UPDATE_PERIOD));
         console.log("FAR_BODYCOUNT_PER_60FPS_FRAME", FAR_BODYCOUNT_PER_60FPS_FRAME);
 
-        var bodies = fullofstars.createGravitySystem(BODYCOUNT, true);
-        var bodiesVfx = fullofstars.createGravitySystem(BODYCOUNT_VFX, false);
-        var bodiesGas = fullofstars.createGravitySystem(BODYCOUNT_GAS, false);
+        var bodies = fullofstars.createGravitySystem(BODYCOUNT, fullofstars.TYPICAL_STAR_MASS, true);
+        var bodiesVfx = fullofstars.createGravitySystem(BODYCOUNT_VFX, 0.3*fullofstars.TYPICAL_STAR_MASS, false);
+        var bodiesGas = fullofstars.createGravitySystem(BODYCOUNT_GAS, 0.2*fullofstars.TYPICAL_STAR_MASS, false);
 
 
-        var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies, 1.0), materials.bright );
+        var mesh = new THREE.PointCloud( createCloudGeometryFromBodies(bodies), materials.bright );
         mesh.frustumCulled = false;
-        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx, 1.0), materials.brightSmall );
+        var meshVfx = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesVfx), materials.brightSmall );
         meshVfx.frustumCulled = false;
-        var meshGas = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesGas, 1.0), materials.gasCloud );
+        var meshGas = new THREE.PointCloud( createCloudGeometryFromBodies(bodiesGas), materials.gasCloud );
         meshGas.frustumCulled = false;
 
         colorParticles(bodies, mesh, colorStar);

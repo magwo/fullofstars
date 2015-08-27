@@ -352,7 +352,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
 
 
 
-fullofstars.createGravitySystem = function(particleCount, makeBlackHole) {
+fullofstars.createGravitySystem = function(particleCount, typicalMass, makeBlackHole) {
     var bodies = [];
 
     var typicalStarSpeed = 20000000 * 1000 * fullofstars.UNIVERSE_SCALE;
@@ -374,7 +374,7 @@ fullofstars.createGravitySystem = function(particleCount, makeBlackHole) {
         }
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
-            var mass = fullofstars.TYPICAL_STAR_MASS * 2 * Math.random() * Math.random();
+            var mass = typicalMass * 2 * Math.random() * Math.random();
             var xVel = Math.sign(pos.y) * typicalStarSpeed;
             var yVel = Math.sign(pos.x) * typicalStarSpeed;
             var zVel = Math.sign(pos.x) * typicalStarSpeed;
