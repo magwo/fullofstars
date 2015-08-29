@@ -102,56 +102,8 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
 
     var currentFarAttractedIndex = 0;
 
-    var FAR_THRESHOLD_SQR = Math.pow(100 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2); // TODO: Make this more related to mass and distance combined
-
-    var applyGravity = function(body1, body2) {
-
-        var isBlackHoleInteraction = body1.mass+body2.mass > (fullofstars.TYPICAL_STAR_MASS * 100);
-
-        var body1To2 = tempVec.subVectors(body2.position, body1.position);
-        body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
-        var sqrDist = body1To2.lengthSq();
-
-        var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
-        // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
-        var forceOnBody = body1To2.setLength(force);
-
-        var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(100 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2);
-
-        if(!isBlackHoleInteraction && sqrDist < GAS_INTERACTION_DISTANCE_SQRD) {
-            // TODO: Use gas constants instead
-            var gasForce = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
-            tempVec2.copy(body1.velocity);
-            var relativeVel = tempVec2.sub(body2.velocity);
-            var gasForceOnBody = relativeVel.multiplyScalar(gasForce*Math.pow(10, 9));
-
-            body1.force.sub(gasForceOnBody)
-            if(attractingIsAttracted); {
-                body2.force.add(gasForceOnBody);
-            }
-        }
-        body1.force.add(forceOnBody);
-        if(attractingIsAttracted); {
-            body2.force.sub(forceOnBody);
-        }
-        return sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100;
-    };
-
-    // // Returns: Whether this should be a close interaction
-    // var addGravityToVector = function(body1, body2, vector) {
-    //     // TODO: Inline and optimise
-    //     var body1To2 = tempVec.subVectors(body2.position, body1.position);
-    //     body1To2.multiplyScalar(fullofstars.UNIVERSE_SCALE_RECIPROCAL);
-    //     var sqrDist = body1To2.lengthSq();
-    //     var force = fullofstars.GRAVITATIONAL_CONSTANT * ((body1.mass*body2.mass) / (sqrDist + fullofstars.GRAVITY_EPSILON*fullofstars.GRAVITY_EPSILON));
-    //     // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
-    //     var forceOnBody = body1To2.setLength(force);
-    //     if(sqrDist < FAR_THRESHOLD_SQR || body1.mass+body2.mass > fullofstars.TYPICAL_STAR_MASS * 100) {
-    //         return true; // This should be handled as a close interaction
-    //     }
-    //     vector.add(forceOnBody);
-    //     return false;
-    // };
+    var FAR_THRESHOLD_SQR = Math.pow(40 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2); // TODO: Make this more related to mass and distance combined
+    var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(20 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2);
 
     applicator.handleCloseInteractions = function() {
         // Highly inlined for performance
@@ -160,7 +112,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
         var gravitationalConstant = fullofstars.GRAVITATIONAL_CONSTANT;
         var gravityEpsilon = fullofstars.GRAVITY_EPSILON;
         var gravityEpsilonSqrd = gravityEpsilon*gravityEpsilon;
-        var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(100 * universeScaleRecipr, 2);
+
 
         var body1To2X = 0.0, body1To2Y = 0.0; body1To2Z = 0.0;
         var relativeVelX = 0.0, relativeVelY = 0.0; relativeVelZ = 0.0;
@@ -192,7 +144,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                 var sqrDist = body1To2X*body1To2X + body1To2Y*body1To2Y + body1To2Z*body1To2Z;
                 var dist = Math.sqrt(sqrDist);
 
-                var force = gravitationalConstant * ((massProduct) / (sqrDist + gravityEpsilon*gravityEpsilon));
+                var force = gravitationalConstant * ((massProduct*dist) / Math.pow(sqrDist + gravityEpsilonSqrd, 3/2));
                 // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
                 var setLengthMultiplier = force / dist;
 
@@ -208,9 +160,10 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                 }
                 var isClose = sqrDist < FAR_THRESHOLD_SQR || isBlackHoleInteraction;
 
-                if(!isBlackHoleInteraction) {
+                ///console.log("gas?", sqrDist, GAS_INTERACTION_DISTANCE_SQRD);
+                if(!isBlackHoleInteraction && sqrDist < GAS_INTERACTION_DISTANCE_SQRD) {
                     // Handle some sort of gas interaction
-                    var gasForce = gravitationalConstant * (massProduct / (sqrDist + gravityEpsilonSqrd));
+                    var gasForce = gravitationalConstant * (massProduct / (sqrDist));
                     gasForce *= Math.pow(10, 9);
                     var body1vel = body1.velocity;
                     var body2vel = body2.velocity;
@@ -300,7 +253,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                         var sqrDist = body1To2X*body1To2X + body1To2Y*body1To2Y + body1To2Z*body1To2Z;
                         var dist = Math.sqrt(sqrDist);
 
-                        var force = gravitationalConstant * ((body1.mass*body2.mass) / (sqrDist + gravityEpsilon*gravityEpsilon));
+                        var force = gravitationalConstant * ((body1.mass*body2.mass*dist) / Math.pow(sqrDist + gravityEpsilon*gravityEpsilon, 3/2));
                         // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
                         var setLengthMultiplier = force / dist;
 
@@ -341,7 +294,6 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
 
 
     applicator.updateForces = function(bodyCountToUpdateFarForcesFor) {
-        //console.log("closeInteractionCount", closeInteractionCount);
         applicator.handleCloseInteractions();
         applicator.handleFarInteractions(bodyCountToUpdateFarForcesFor);
         applicator.applyFarForces();
