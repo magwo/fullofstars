@@ -71,6 +71,14 @@ window.fullofstars = window.fullofstars || {};
     }
 
 
+
+    function updateDebugPanel(heavyBodiesApplicator, vfxBodies, gasBodies) {
+        var dp = $("#debug_panel");
+
+        dp.find(".heavy-bodies .close-interactions .value").text(formatScientificNotationFixedWidth(heavyBodiesApplicator.closeInteractionCount, 4, 2));
+    }
+
+
     function createSkyboxStuff() {
         // Make a skybox
         var urls = [
@@ -165,11 +173,43 @@ window.fullofstars = window.fullofstars || {};
         scene.add(mesh);
         scene.add(meshVfx);
 
+        var CAMERA_MODES = {ORBIT: 0, FOLLOW_PARTICLE: 1}
+        var cameraMode = CAMERA_MODES.ORBIT;
+        var followedParticleIndex = 1;
+
         var TIME_SCALE = Math.pow(10, 9);
+        var TIME_SCALES = [Math.pow(10, 9), 3*Math.pow(10, 8), 1*Math.pow(10, 8), 0.0];
+        var timeScaleIndex = 0;
         var timeScale = TIME_SCALE;
         $("body").on("keypress", function(e) {
-            if(e.which == 32) { timeScale = TIME_SCALE - timeScale; }
+            console.log("Pressed", e.which);
+            if(_.contains([32], e.which)) {
+                console.log("FOO");
+                timeScaleIndex = (timeScaleIndex + 1) % TIME_SCALES.length;
+                timeScale = TIME_SCALES[timeScaleIndex];
+            }
+            else if(_.contains([49], e.which)) {
+                makeCameraTransition(function() {
+                    cameraMode = CAMERA_MODES.ORBIT;
+                });
+            }
+            else if(_.contains([50, 51], e.which)) {
+                makeCameraTransition(function() {
+                    cameraMode = CAMERA_MODES.FOLLOW_PARTICLE;
+
+                    followedParticleIndex += e.which === 50 ? -1 : 1;
+                    followedParticleIndex = followedParticleIndex.mod(bodies.length);
+                    console.log(followedParticleIndex);
+                });
+            }
         });
+
+        function makeCameraTransition(transitionFunc) {
+            $("#loading_cover").fadeIn(300, function() {
+                transitionFunc();
+                $("#loading_cover").fadeOut(300);
+            });
+        }
 
         function render() {
             renderer.autoclear = false;
@@ -209,23 +249,48 @@ window.fullofstars = window.fullofstars || {};
 
         function startGalaxySimulation() {
             function update(t) {
-                var dt = (t - lastT) * 0.001 * timeScale;
+                var dt = (t - lastT) * 0.001;
                 dt = Math.min(1 / 60.0, dt); // Clamp
                 accumulatedRealDtTotal += dt;
 
                 var positionScale = 1.5 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
-                var cameraRotationSpeed = 0.3;
-                camera.position.copy(bodies[0].position);
-                camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
 
-                var cameraLookatRotationSpeed = 0.8;
-                var cameraLookAtScale = 0.2 * positionScale;
-                var cameraLookAtPos = new THREE.Vector3().copy(bodies[0].position);
-                cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
-                camera.lookAt(cameraLookAtPos);
+                if(cameraMode === CAMERA_MODES.ORBIT) {
+                    var cameraRotationSpeed = 0.3;
+                    camera.position.copy(bodies[0].position);
+                    camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
+
+                    var cameraLookatRotationSpeed = 0.8;
+                    var cameraLookAtScale = 0.2 * positionScale;
+                    var cameraLookAtPos = new THREE.Vector3().copy(bodies[0].position);
+                    cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
+                    camera.lookAt(cameraLookAtPos);
+                } else if(cameraMode === CAMERA_MODES.FOLLOW_PARTICLE) {
+                    var cameraPos = new THREE.Vector3().add(bodies[followedParticleIndex].velocity);
+                    cameraPos.setLength(1);
+                    cameraPos.add(bodies[followedParticleIndex].position)
+                    camera.position.copy(cameraPos);
+                    //camera.position.sub(bodies[followedParticleIndex].velocity);
+
+                    var cameraUp = new THREE.Vector3().copy(bodies[0].position);
+                    cameraUp.sub(cameraPos);
+                    cameraUp.multiplyScalar(-1);
+                    cameraUp.normalize();
+
+                    var cameraLookAtPos = new THREE.Vector3().copy(bodies[followedParticleIndex].velocity);
+                    cameraLookAtPos.setLength(1.5);
+                    cameraLookAtPos.sub(cameraUp);
+                    cameraLookAtPos.add(bodies[followedParticleIndex].position);
+
+                    var m = new THREE.Matrix4();
+                    m.lookAt(cameraPos, cameraLookAtPos, cameraUp);
+
+                    camera.position.copy(cameraPos);
+                    camera.quaternion.setFromRotationMatrix(m);
+                }
 
 
-                dt *= TIME_SCALE;
+                dt *= timeScale;
                 accumulatedFarDt += dt;
 
                 // This step updates positions
@@ -261,6 +326,7 @@ window.fullofstars = window.fullofstars || {};
                 meshVfx.geometry.verticesNeedUpdate = true;
                 meshGas.geometry.verticesNeedUpdate = true;
                 lastT = t;
+                updateDebugPanel(gravityApplicator, bodiesVfx, bodiesGas);
             };
 
             function handleAnimationFrame(dt) {

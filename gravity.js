@@ -92,7 +92,7 @@ PointMassBody.velocityVerletUpdate = function(bodies, dt, isPositionStep) {
 
 
 fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, attractingCelestials) {
-    var applicator = {};
+    var applicator = {closeInteractionCount: 0};
     var attractingIsAttracted = attractingCelestials === attractedCelestials;
 
     var closeInteractions = _.map(attractedCelestials, function() { var arr = new Array(4); arr[0] = arr[1] = arr[2] = arr[3] = -1; return arr; });
@@ -103,7 +103,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
     var currentFarAttractedIndex = 0;
 
     var FAR_THRESHOLD_SQR = Math.pow(40 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2); // TODO: Make this more related to mass and distance combined
-    var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(20 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2);
+    var GAS_INTERACTION_DISTANCE_SQRD = Math.pow(30 * fullofstars.UNIVERSE_SCALE_RECIPROCAL, 2);
 
     applicator.handleCloseInteractions = function() {
         // Highly inlined for performance
@@ -163,8 +163,8 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                 ///console.log("gas?", sqrDist, GAS_INTERACTION_DISTANCE_SQRD);
                 if(!isBlackHoleInteraction && sqrDist < GAS_INTERACTION_DISTANCE_SQRD) {
                     // Handle some sort of gas interaction
-                    var gasForce = gravitationalConstant * (massProduct / (sqrDist));
-                    gasForce *= Math.pow(10, 9);
+                    var gasForce = (dist) / Math.pow(sqrDist + gravityEpsilonSqrd, 3/2);
+                    gasForce *= Math.pow(10, 19);
                     var body1vel = body1.velocity;
                     var body2vel = body2.velocity;
 
@@ -172,14 +172,14 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                     relativeVelY = body1vel.y - body2vel.y;
                     relativeVelZ = body1vel.z - body2vel.z;
 
-                    body1force.x -= relativeVelX * gasForce;
-                    body1force.y -= relativeVelY * gasForce;
-                    body1force.z -= relativeVelZ * gasForce;
+                    body1force.x -= relativeVelX * gasForce * body1.mass;
+                    body1force.y -= relativeVelY * gasForce * body1.mass;
+                    body1force.z -= relativeVelZ * gasForce * body1.mass;
 
                     if(attractingIsAttracted); {
-                        body2force.x += relativeVelX * gasForce;
-                        body2force.y += relativeVelY * gasForce;
-                        body2force.z += relativeVelZ * gasForce;
+                        body2force.x += relativeVelX * gasForce * body2.mass;
+                        body2force.y += relativeVelY * gasForce * body2.mass;
+                        body2force.z += relativeVelZ * gasForce * body2.mass;
                     }
                 }
 
@@ -297,6 +297,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
         applicator.handleCloseInteractions();
         applicator.handleFarInteractions(bodyCountToUpdateFarForcesFor);
         applicator.applyFarForces();
+        applicator.closeInteractionCount = closeInteractionCount;
     };
     return applicator;
 }
@@ -310,6 +311,8 @@ fullofstars.createGravitySystem = function(particleCount, typicalMass, makeBlack
     var typicalStarSpeed = 20000000 * 1000 * fullofstars.UNIVERSE_SCALE;
     console.log("typical star speed", typicalStarSpeed);
     var side = 2000.0;
+
+    var BLACK_HOLE_MASS = fullofstars.TYPICAL_STAR_MASS * 10000;
 
     for (var p = 0; p < particleCount; p++) {
         var pX = Math.random() * side - side*0.5;
@@ -327,9 +330,10 @@ fullofstars.createGravitySystem = function(particleCount, typicalMass, makeBlack
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
             var mass = typicalMass * 2 * Math.random() * Math.random();
-            var xVel = Math.sign(pos.y) * typicalStarSpeed;
-            var yVel = Math.sign(pos.x) * typicalStarSpeed;
-            var zVel = Math.sign(pos.x) * typicalStarSpeed;
+            var requiredSpeed = fullofstars.UNIVERSE_SCALE *0.3 * speedNeededForCircularOrbit(mass, BLACK_HOLE_MASS, pos.length());//(ourMass, otherBodyMass, distance)
+            var xVel = Math.sign(pos.y) * requiredSpeed;
+            var yVel = Math.sign(pos.x) * requiredSpeed;
+            var zVel = Math.sign(pos.x) * requiredSpeed;
         }
         var body = new PointMassBody(mass, pos, new THREE.Vector3(xVel, yVel, zVel));
         bodies.push(body);
