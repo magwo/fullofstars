@@ -256,14 +256,14 @@ window.fullofstars = window.fullofstars || {};
                 var positionScale = 1.5 * fullofstars.MILKY_WAY_DIAMETER * fullofstars.UNIVERSE_SCALE;
 
                 if(cameraMode === CAMERA_MODES.ORBIT) {
-                    var cameraRotationSpeed = 0.3;
+                    var cameraRotationSpeed = 0.03;
                     camera.position.copy(bodies[0].position);
-                    camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.5 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
+                    camera.position.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale, positionScale * 0.7 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraRotationSpeed) * positionScale));
 
-                    var cameraLookatRotationSpeed = 0.8;
+                    var cameraLookatRotationSpeed = 0.1;
                     var cameraLookAtScale = 0.2 * positionScale;
                     var cameraLookAtPos = new THREE.Vector3().copy(bodies[0].position);
-                    cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, 0, Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
+                    cameraLookAtPos.add(new THREE.Vector3(Math.cos(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale, -positionScale * 0.07 * Math.sin(accumulatedRealDtTotal * 0.2), Math.sin(accumulatedRealDtTotal*cameraLookatRotationSpeed) * cameraLookAtScale))
                     camera.lookAt(cameraLookAtPos);
                 } else if(cameraMode === CAMERA_MODES.FOLLOW_PARTICLE) {
                     var cameraPos = new THREE.Vector3().add(bodies[followedParticleIndex].velocity);

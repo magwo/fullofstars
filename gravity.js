@@ -134,7 +134,7 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                 var massSum = body1.mass + body2.mass;
                 var massProduct = body1.mass * body2.mass;
 
-                var isBlackHoleInteraction = massSum > (typicalStarMass * 100);
+                var isBlackHoleInteraction = body1.mass > typicalStarMass * 100 || body2.mass > typicalStarMass * 100;
 
                 // Calculate body1To2 and put into proper scale
                 body1To2X = (body2pos.x - body1pos.x)*universeScaleRecipr;
@@ -145,6 +145,14 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
                 var dist = Math.sqrt(sqrDist);
 
                 var force = gravitationalConstant * ((massProduct*dist) / Math.pow(sqrDist + gravityEpsilonSqrd, 3/2));
+
+                 if(isBlackHoleInteraction) {
+                    // Apply fake dark matter effect from black hole
+                    var DARK_FORCE_COEFFICIENT = 4*Math.pow(10, -20);
+                    var darkForce = DARK_FORCE_COEFFICIENT * gravitationalConstant * (massProduct / dist);
+                    force += darkForce;
+                }
+
                 // TODO: Find a way to not normalize - we already have squared distance and a vector with the full length
                 var setLengthMultiplier = force / dist;
 
@@ -308,32 +316,50 @@ fullofstars.createTwoTierSmartGravityApplicator = function(attractedCelestials, 
 fullofstars.createGravitySystem = function(particleCount, typicalMass, makeBlackHole) {
     var bodies = [];
 
-    var typicalStarSpeed = 20000000 * 1000 * fullofstars.UNIVERSE_SCALE;
+    var typicalStarSpeed = 7*Math.pow(10, 10) * fullofstars.UNIVERSE_SCALE;
     console.log("typical star speed", typicalStarSpeed);
-    var side = 2000.0;
+    var side = 2300.0;
 
-    var BLACK_HOLE_MASS = fullofstars.TYPICAL_STAR_MASS * 10000;
+    var BLACK_HOLE_MASS = fullofstars.TYPICAL_STAR_MASS * 5000;
 
     for (var p = 0; p < particleCount; p++) {
-        var pX = Math.random() * side - side*0.5;
-        var pY = Math.random() * side * 0.1 - side * 0.05;
-        var pZ = Math.random() * side - side*0.5;
+        var angle = 100 + Math.PI * 2 * Math.random();
+
+        // This creates density variations angularly
+        angle += 0.10 * Math.sin(angle * Math.PI*2);
+        
+        var dist = side * 0.5 * Math.random();
+        dist += side * 0.04 * -Math.cos(angle * Math.PI*2);
+
+        var pX = dist * Math.cos(angle);
+        var pY = pX * 0.2 + 0.9*(side*side*0.01/(dist+side*0.1)) * (-.5 + Math.random());
+        var pZ = dist * Math.sin(angle);
+
+
 
 
         if(makeBlackHole && p === 0) {
           console.log("Creating black hole");
             var pos = new THREE.Vector3(0,0,0);
-            var mass = fullofstars.TYPICAL_STAR_MASS * 10000;
+            var mass = BLACK_HOLE_MASS;
             var xVel = 0;
             var yVel = 0;
         }
         else {
             var pos = new THREE.Vector3(pX, pY, pZ);
             var mass = typicalMass * 2 * Math.random() * Math.random();
-            var requiredSpeed = fullofstars.UNIVERSE_SCALE *0.3 * speedNeededForCircularOrbit(mass, BLACK_HOLE_MASS, pos.length());//(ourMass, otherBodyMass, distance)
-            var xVel = Math.sign(pos.y) * requiredSpeed;
-            var yVel = Math.sign(pos.x) * requiredSpeed;
-            var zVel = Math.sign(pos.x) * requiredSpeed;
+            
+
+            // This is newtonian and only works with no dark matter presence
+            //var requiredSpeed = fullofstars.UNIVERSE_SCALE *0.3 * speedNeededForCircularOrbit(mass, BLACK_HOLE_MASS, pos.length());//(ourMass, otherBodyMass, distance)
+            
+            var vel = new THREE.Vector3(pX, pY, pZ);
+            vel.normalize();
+            var requiredSpeed = typicalStarSpeed * 1.8 + typicalStarSpeed * 0.1 * Math.log(1.1+(10*dist/side));
+
+            var xVel = vel.z * requiredSpeed;
+            var yVel = vel.y * requiredSpeed;
+            var zVel = -vel.x * requiredSpeed;
         }
         var body = new PointMassBody(mass, pos, new THREE.Vector3(xVel, yVel, zVel));
         bodies.push(body);
